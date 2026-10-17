@@ -142,19 +142,6 @@ Para manter o bot ativo após desconectar do SSH, configure um serviço `systemd
 - A integração de ponto com o FiveM lê mensagens do canal de logs configurado; seu funcionamento depende do formato dessas mensagens.
 - A exoneração deve preservar o histórico de certificações, mesmo quando os cargos organizacionais são removidos.
 
-## Segurança e publicação no GitHub
-
-Antes do primeiro `git push`, confira:
-
-- [ ] `.env` e chaves privadas não estão no repositório nem no histórico de commits.
-- [ ] `firebase-service-account.json` não foi incluído.
-- [ ] `node_modules/` e arquivos de log não foram adicionados.
-- [ ] Os IDs e canais em `src/config/ids.js` correspondem ao ambiente desejado.
-- [ ] As permissões dos comandos administrativos foram revisadas.
-- [ ] O bot foi testado em um ambiente de desenvolvimento antes de usar dados de produção.
-
-> **Atenção:** o `.gitignore` protege apenas arquivos que ainda não estão sendo rastreados pelo Git. Se alguma credencial já foi publicada, remova-a do histórico e **revogue/rotacione** o segredo comprometido.
-
 ## Scripts npm
 
 ```bash
