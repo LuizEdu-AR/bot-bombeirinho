@@ -1,0 +1,625 @@
+{
+  "schemaVersion": 1,
+  "source": "SSFD planilha revisada e aprovada",
+  "guildId": "1318928108601999392",
+  "records": [
+    {
+      "legacyId": "legacy-juridico-001",
+      "name": "Cool Beans",
+      "cnpj": "85.708.799/0001-28",
+      "type": "Restaurante e eventos",
+      "location": "Sul",
+      "ownerName": "Beatriz Coff LeBlanc Salazar",
+      "ownerId": "295",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Polly Bocket",
+          "rpId": "138",
+          "phone": "339-876"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-002",
+      "name": "Garden Café",
+      "cnpj": "",
+      "type": "Cafeteria",
+      "location": "Sul",
+      "ownerName": "Margot Blanc",
+      "ownerId": "3853",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Vidha Maravieski",
+          "rpId": "6974",
+          "phone": "471-714"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-003",
+      "name": "Fazenda Agrossa",
+      "cnpj": "",
+      "type": "Restaurante e eventos",
+      "location": "Norte",
+      "ownerName": "Giuseppe Kgrossa",
+      "ownerId": "1507",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Lala Kgrossa",
+          "rpId": "2397",
+          "phone": "216-081"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-004",
+      "name": "Dallas Cowboys Lounge",
+      "cnpj": "40.947.900/0001-65",
+      "type": "Restaurante e eventos",
+      "location": "Norte",
+      "ownerName": "Yohan Alonso",
+      "ownerId": "2745",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Rafaela Lover",
+          "rpId": "1769",
+          "phone": "762-024"
+        },
+        {
+          "name": "Gustavo Maximoff",
+          "rpId": "1767",
+          "phone": "393-272"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-005",
+      "name": "Chapéu de Bruxa",
+      "cnpj": "55.982.372/0001-52",
+      "type": "Restaurante e eventos",
+      "location": "Norte",
+      "ownerName": "Lua Romano Devil",
+      "ownerId": "55",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Helio Winter Valente",
+          "rpId": "4815",
+          "phone": "691-880"
+        },
+        {
+          "name": "Ellie Winter Valente",
+          "rpId": "5269",
+          "phone": "069-388"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-006",
+      "name": "Mojitos Bar",
+      "cnpj": "46.553.494/0001-32",
+      "type": "Rock bar e eventos",
+      "location": "Norte",
+      "ownerName": "Nathaniel Castro Grindr",
+      "ownerId": "4850",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Rayan Castro",
+          "rpId": "5503",
+          "phone": "332-881"
+        },
+        {
+          "name": "Kyla White Castro",
+          "rpId": "5505",
+          "phone": "679-033"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-007",
+      "name": "Digital Den Praia",
+      "cnpj": "",
+      "type": "Tecnologia e Eventos",
+      "location": "Sul",
+      "ownerName": "Laura Reis",
+      "ownerId": "1061",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Stevam Reis",
+          "rpId": "329",
+          "phone": "604-834"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-009",
+      "name": "Apex House",
+      "cnpj": "84.019.516/0001-78",
+      "type": "Restaurante e Eventos",
+      "location": "Norte",
+      "ownerName": "Lucian Ferri Saito",
+      "ownerId": "506",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Zoe Ferri Saito",
+          "rpId": "591",
+          "phone": "632-273"
+        },
+        {
+          "name": "Ian Gallagher Belmont Ferri Saito",
+          "rpId": "571",
+          "phone": "017-843"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-010",
+      "name": "Digital Den China",
+      "cnpj": "12.270.877/0001-81",
+      "type": "Eletrônicos e eventos",
+      "location": "Sul",
+      "ownerName": "Mencia Nyong'o",
+      "ownerId": "406",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Nycole Mayhara",
+          "rpId": "1347",
+          "phone": "699-304"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-011",
+      "name": "Tequila-La",
+      "cnpj": "27.294.533/0001-02",
+      "type": "Comércio de Alimentos",
+      "location": "Sul",
+      "ownerName": "Eshilo Sully",
+      "ownerId": "2729",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Melissa Hoocks",
+          "rpId": "4533",
+          "phone": "409-317"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-012",
+      "name": "Mirror Restaurante",
+      "cnpj": "94.131.989/0001-16",
+      "type": "Restaurante e Eventos",
+      "location": "Sul",
+      "ownerName": "Luke Carter",
+      "ownerId": "4845",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Dante Zorian",
+          "rpId": "3981",
+          "phone": "048-567"
+        },
+        {
+          "name": "Cora Zorian",
+          "rpId": "3980",
+          "phone": "505-474"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-013",
+      "name": "White Cannabis",
+      "cnpj": "",
+      "type": "Produtos de tabaco",
+      "location": "Sul",
+      "ownerName": "Yumeko Hayato Liev",
+      "ownerId": "1356",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Lua Hayato Liev",
+          "rpId": "542",
+          "phone": "330-853"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-014",
+      "name": "Área Z",
+      "cnpj": "56.169.588/0001-66",
+      "type": "Restaurante e Eventos",
+      "location": "Norte",
+      "ownerName": "Nami Suzuki Mitre Grindr",
+      "ownerId": "393",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Bento Grindr",
+          "rpId": "363",
+          "phone": "385-727"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-015",
+      "name": "Tropical Heights",
+      "cnpj": "21.866.995/0001-48",
+      "type": "Restaurante e Eventos",
+      "location": "Sul",
+      "ownerName": "Nylah Blanck",
+      "ownerId": "383",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Kiodai Arasaka",
+          "rpId": "129",
+          "phone": "109-654"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-016",
+      "name": "V.E.I.L",
+      "cnpj": "57.758.342/0001-92",
+      "type": "Estudo e avanço tecnológico",
+      "location": "Norte",
+      "ownerName": "Minako Mars",
+      "ownerId": "1358",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-017",
+      "name": "Pop's",
+      "cnpj": "49.333.293/0001-18",
+      "type": "Restaurante e Eventos",
+      "location": "Norte",
+      "ownerName": "Henri Kim Price",
+      "ownerId": "1546",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Maxine Kim",
+          "rpId": "611",
+          "phone": "625-384"
+        },
+        {
+          "name": "Syndel Kim Price",
+          "rpId": "1337",
+          "phone": "101-141"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-018",
+      "name": "RED's Tunershop",
+      "cnpj": "64.663.544/0001-16",
+      "type": "Mecânica e Eventos",
+      "location": "Sul",
+      "ownerName": "Hido Garcia",
+      "ownerId": "643",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Roger Macedo Monteiro Prado Garcia",
+          "rpId": "503",
+          "phone": "458-143"
+        },
+        {
+          "name": "Roberto Pombal",
+          "rpId": "427",
+          "phone": "647-797"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-019",
+      "name": "Pearls Resort",
+      "cnpj": "27.509.971/0001-18",
+      "type": "RESTAURANTE",
+      "location": "Sul",
+      "ownerName": "DANTE PARADISE VARGAS",
+      "ownerId": "213",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-020",
+      "name": "Clutch Drive-In",
+      "cnpj": "",
+      "type": "RESTAURANTE",
+      "location": "Norte",
+      "ownerName": "Kiel Savarog",
+      "ownerId": "153",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Koda Leywin",
+          "rpId": "62",
+          "phone": "173-702"
+        },
+        {
+          "name": "Khalifa Spice",
+          "rpId": "125",
+          "phone": "059 049"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-021",
+      "name": "Vanilla Unicorn Sul",
+      "cnpj": "48.966.474/0001-19",
+      "type": "Motel e Hotel",
+      "location": "Sul",
+      "ownerName": "Vitoria Bordeaux",
+      "ownerId": "1295",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Oscar Baroni",
+          "rpId": "1000",
+          "phone": "864-546"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-022",
+      "name": "Vanilla Unicorn Paleto",
+      "cnpj": "76.553.532/0001-18",
+      "type": "Boate e Eventos",
+      "location": "Norte",
+      "ownerName": "Megan Müller",
+      "ownerId": "3795",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Corina Castro",
+          "rpId": "171",
+          "phone": "466-122"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-023",
+      "name": "Stags",
+      "cnpj": "65.063.202/0001-28",
+      "type": "Restaurante e Eventos",
+      "location": "Norte",
+      "ownerName": "Eric Madox Volkova Falls",
+      "ownerId": "342",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Math Madox Volkova Falls",
+          "rpId": "664",
+          "phone": "722-617"
+        },
+        {
+          "name": "Icaro Madox",
+          "rpId": "4259",
+          "phone": "439-012"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-024",
+      "name": "Organização De Combate Contra O Oculto ( O.C.C.O)",
+      "cnpj": "",
+      "type": "Não tem Fins Comerciais",
+      "location": "Norte",
+      "ownerName": "Blake Myers",
+      "ownerId": "3343",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Jully Myers",
+          "rpId": "1856",
+          "phone": "896-913"
+        },
+        {
+          "name": "Apollo Fox LockWood",
+          "rpId": "273",
+          "phone": "212-709"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-025",
+      "name": "Rex Dinner",
+      "cnpj": "25.603.138/0001-06",
+      "type": "Restaurante e Eventos",
+      "location": "Norte",
+      "ownerName": "Gorgon Artemis Snicket",
+      "ownerId": "480",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-026",
+      "name": "Forest Bar",
+      "cnpj": "37.495.874/0001-77",
+      "type": "Bar e Eventos",
+      "location": "Norte",
+      "ownerName": "White Capetta",
+      "ownerId": "103",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Haru Capetta",
+          "rpId": "5",
+          "phone": "170-617"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-027",
+      "name": "Wonderama",
+      "cnpj": "43.239.187/0001-99",
+      "type": "Restaurantes e eventos",
+      "location": "Norte",
+      "ownerName": "Kelvin Summers",
+      "ownerId": "304",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Lara Hygan",
+          "rpId": "247",
+          "phone": "075 976"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-028",
+      "name": "Dudark Motors",
+      "cnpj": "20.788.278/0001-37",
+      "type": "Mecânica",
+      "location": "Norte",
+      "ownerName": "Liara Sorokin",
+      "ownerId": "65",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Ryu Dudark",
+          "rpId": "175",
+          "phone": "662-299"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-029",
+      "name": "The Palace",
+      "cnpj": "27.742.393/0001-40",
+      "type": "BOATE E EVENTOS",
+      "location": "Sul",
+      "ownerName": "Hillary Snicket",
+      "ownerId": "141",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Dara Snicket Pompom",
+          "rpId": "63",
+          "phone": "145-308"
+        },
+        {
+          "name": "Lana Paradise Snicket",
+          "rpId": "2720",
+          "phone": "415-697"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-030",
+      "name": "Emissora Nova TV",
+      "cnpj": "51.043.901/0001-00",
+      "type": "Entretenimento sem fins lucrativos",
+      "location": "Norte",
+      "ownerName": "Lara Coff",
+      "ownerId": "1341",
+      "ownerPhone": "",
+      "socios": [
+        {
+          "name": "Ethan Lockwood Salazar",
+          "rpId": "577",
+          "phone": "649-092"
+        }
+      ]
+    },
+    {
+      "legacyId": "legacy-juridico-032",
+      "name": "Vespucci Beach Tunershop",
+      "cnpj": "70.328.457/0001-05",
+      "type": "Mecânica e Eventos",
+      "location": "Sul",
+      "ownerName": "Gael Kenway",
+      "ownerId": "328",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-034",
+      "name": "Siri Cascudo",
+      "cnpj": "87.036.672/0001-35",
+      "type": "Restaurante e Eventos",
+      "location": "Sul",
+      "ownerName": "Duque Delacruz",
+      "ownerId": "212",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-037",
+      "name": "Ten Cent",
+      "cnpj": "83.939.043/0001-64",
+      "type": "Estabelecimento de entretenimento",
+      "location": "Sul",
+      "ownerName": "Lucas Malik",
+      "ownerId": "2308",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-044",
+      "name": "ELLU Group",
+      "cnpj": "91.009.456/0001-78",
+      "type": "ELLU Group",
+      "location": "Sul",
+      "ownerName": "LILIAN MINAJ HYGAN BLACKWELL",
+      "ownerId": "379",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-045",
+      "name": "Universidade do Mar Alamo (UMAR)",
+      "cnpj": "96.037.311/0001-02",
+      "type": "Ensino Superior",
+      "location": "Norte",
+      "ownerName": "Olga Lockhart",
+      "ownerId": "1330",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-046",
+      "name": "Prometheus",
+      "cnpj": "19.450.632/0001-85",
+      "type": "Estudos e desenvolvimento de produtos científicos e tecnológicos",
+      "location": "Norte",
+      "ownerName": "Olga Lockhart",
+      "ownerId": "1330",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-056",
+      "name": "Mystic Spells",
+      "cnpj": "13.666.131/0001-66",
+      "type": "Autocuidado e eventos",
+      "location": "Norte",
+      "ownerName": "Sara MavenTwo Montibeller Silverhand",
+      "ownerId": "384",
+      "ownerPhone": "",
+      "socios": []
+    },
+    {
+      "legacyId": "legacy-juridico-064",
+      "name": "Boat House",
+      "cnpj": "98.106.670/0001-91",
+      "type": "Refeições e Eventos",
+      "location": "Norte",
+      "ownerName": "Jão Lee Roitman",
+      "ownerId": "321",
+      "ownerPhone": "",
+      "socios": []
+    }
+  ]
+}
