@@ -105,6 +105,30 @@ async function handleFiveMLog(message, {recovery=false}={}) {
    tx.create(eventRef,{...audit,result:'opened',sessionId});
    result={kind:'opened',data:d};return;
   }
+  // Saída da cidade pode ajustar o último ponto encerrado manualmente,
+  // somente se ele ainda for a sessão atual e tiver sido aberto pelo FiveM.
+  if(old?.status==='closed' && old.closedBy==='discord' && old.source==='fivem'
+     && old.sessionId && event.atMs>=old.startedAtMs
+     && event.atMs>= (old.fivemLastEventAtMs || old.startedAtMs)) {
+   const previousClose=old.closedAtMs;
+   const history=Array.isArray(old.pauseHistory)?old.pauseHistory:[];
+   // Recalcular as pausas com corte na saída real, sem usar o horário
+   // do encerramento manual caso ele tenha ocorrido depois da saída.
+   const adjustedHistory=history.filter(h=>Number.isFinite(h.startedAtMs) && h.startedAtMs<event.atMs)
+     .map(h=>({...h,endedAtMs:Math.min(event.atMs,Math.max(h.startedAtMs,h.endedAtMs||previousClose||event.atMs))}));
+   const pausedMs=adjustedHistory.length
+     ? adjustedHistory.reduce((sum,h)=>sum+Math.max(0,h.endedAtMs-h.startedAtMs),0)
+     : (history.length ? 0 : Math.min(old.pausedMs||0,Math.max(0,event.atMs-old.startedAtMs)));
+   const changes={closedAtMs:event.atMs,workedMs:Math.max(0,event.atMs-old.startedAtMs-pausedMs),
+    pausedMs,pauseHistory:adjustedHistory,closedBy:'fivem',fivemLastEventAtMs:event.atMs,
+    updatedAtMs:Date.now(),fivemManualCloseCorrection:{previousClosedAtMs:previousClose,correctedAtMs:event.atMs,sourceUuid:event.uuid}};
+   tx.update(ref,changes);
+   tx.set(ref.collection('sessions').doc(old.sessionId),changes,{merge:true});
+   tx.set(ref.collection('events').doc(event.uuid),{type:'correct_manual_close',at:stamp(event.atMs),sessionId:old.sessionId,
+     previousClosedAtMs:previousClose,source:'fivem',sourceUuid:event.uuid});
+   tx.create(eventRef,{...audit,result:'corrected',sessionId:old.sessionId,previousClosedAtMs:previousClose});
+   result={kind:'corrected',data:{...old,...changes}};return;
+  }
   if(!old || !['open','paused'].includes(old.status) || event.atMs<old.startedAtMs) {
    outcome='conflict';return;
   }
@@ -152,6 +176,7 @@ async function handleFiveMLog(message, {recovery=false}={}) {
    try {await updatePublicMessage(message.guild,userId,result.data);} catch(err) {console.error('[FiveM] Não foi possível atualizar painel:',err);}
   }
   if(result.kind==='closed') await log(message.guild,userId,'Encerrado',result.data,userId);
+  if(result.kind==='corrected') await log(message.guild,userId,'Corrigido pelo FiveM',result.data,userId);
   if(result.kind==='reentry') console.warn(`[FiveM] Reconexão para revisão: ID ${event.rpId}, usuário ${userId}, sessão ${result.data.sessionId}`);
  }
  return {kind:result.kind};

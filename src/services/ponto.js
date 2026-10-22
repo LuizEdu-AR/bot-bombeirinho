@@ -190,7 +190,7 @@ async function handlePonto(interaction) {
     else if(d.pauseStartedMs) pauseHistory.push({startedAtMs:d.pauseStartedMs,endedAtMs:t});
    }
    updated={...d,status:action==='pause'?'paused':action==='resume'?'open':'closed',pausedMs:action==='pause'?(d.pausedMs||0):pausedMs,pauseStartedMs:action==='pause'?t:null,pauseHistory,updatedAtMs:t};
-   if(action==='close'){updated.closedAtMs=t;updated.workedMs=Math.max(0,t-d.startedAtMs-updated.pausedMs);}
+   if(action==='close'){updated.closedAtMs=t;updated.closedBy='discord';updated.workedMs=Math.max(0,t-d.startedAtMs-updated.pausedMs);}
    tx.update(ref,updated);
    tx.set(ref.collection('sessions').doc(sessionId),updated,{merge:true});
   }
