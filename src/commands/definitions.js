@@ -13,6 +13,9 @@ module.exports = [
   .addStringOption(o=>o.setName('telefone').setDescription('Telefone no RP (opcional)').setRequired(false).setMaxLength(35)),
  new SlashCommandBuilder().setName('sincronizar-ids').setDescription('Preenche IDs ausentes dos cadastros pelo apelido do Discord, com confirmação.').setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
  new SlashCommandBuilder().setName('padronizar-nicks').setDescription('Prévia e confirmação da padronização de apelidos, exceto Staff.').setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+ new SlashCommandBuilder().setName('recuperar-logs-ponto').setDescription('Prévia ou recuperação manual de logs do FiveM (chefia e manutenção).')
+  .addIntegerOption(o=>o.setName('horas').setDescription('Período a consultar (1 a 24 horas; padrão: 6)').setMinValue(1).setMaxValue(24))
+  .addBooleanOption(o=>o.setName('aplicar').setDescription('Sim para executar; Não para visualizar a prévia.')),
  new SlashCommandBuilder().setName('ponto').setDescription('Inicia ou consulta seu ponto de serviço no SSFD.'),
  new SlashCommandBuilder().setName('ping').setDescription('Verifica se o Bombeirinho está online.'),
  new SlashCommandBuilder().setName('painel').setDescription('Publica um painel do Bombeirinho no canal correspondente.')

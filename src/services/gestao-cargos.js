@@ -12,9 +12,9 @@ const restorationDrafts=new Map();
 const dismissalKey=i=>`${i.guildId}:${i.user.id}`;
 const BOMBEIROS_ROLE='1518804307607163130';
 const scheduleDrafts=new Map();
-const scheduleCourseKeys=['ems','specFlight','specSea','fiu','preventionBureau','pac','pqd'];
-const scheduleCourseNames={ems:'EMS',specFlight:'Spec Flight',specSea:'Spec Sea',fiu:'FIU',preventionBureau:'Prevention Bureau',pac:'PAC',pqd:'PQD'};
-const scheduleCourseAliases={ems:['ems'],specFlight:['specFlight','flight','specflight','flightSpecialization'],specSea:['specSea','sea','specsea'],fiu:['fiu'],preventionBureau:['preventionBureau','prevention','preventionbureau'],pac:['pac'],pqd:['pqd']};
+const scheduleCourseKeys=['ems','fiu','preventionBureau','pac','pqd','specOpsFlight','specOpsSea','fireEngineering'];
+const scheduleCourseNames={ems:'EMS',fiu:'FIU',preventionBureau:'Prevention Bureau',pac:'PAC',pqd:'PQD',specOpsFlight:'Spec Ops Flight',specOpsSea:'Spec Ops Sea',fireEngineering:'Fire Engineering'};
+const scheduleCourseAliases={ems:['ems'],fiu:['fiu'],preventionBureau:['preventionBureau'],pac:['pac'],pqd:['pqd'],specOpsFlight:['specOpsFlight'],specOpsSea:['specOpsSea'],fireEngineering:['fireEngineering']};
 const courseKeyFor=key=>(scheduleCourseAliases[key]||[]).find(k=>courses[k]);
 const draftKey=i=>`${i.guildId}:${i.user.id}`;
 function getDraft(i){const d=scheduleDrafts.get(draftKey(i));if(!d||Date.now()-d.createdAt>15*60*1000){scheduleDrafts.delete(draftKey(i));return null;}return d;}

@@ -37,8 +37,8 @@ async function resolveUser(guild,rpId) {
  const exact = await registrations.where('rpId','==',rpId).get();
  for (const snap of exact.docs) if (approved(snap.data())) found.add(snap.id);
  // Cadastros antigos podem ter ID no nickname e ainda não ter rpId no Firebase.
- const members = await guild.members.fetch();
- const candidates = [...members.values()].filter(m => !m.user.bot && parseId(m.nickname, m.roles.cache.has(roles.staff))===rpId);
+ const members = found.size === 1 ? null : await guild.members.fetch();
+ const candidates = members ? [...members.values()].filter(m => !m.user.bot && parseId(m.nickname, m.roles.cache.has(roles.staff))===rpId) : [];
  if (candidates.length) {
   const snaps = await db.getAll(...candidates.map(m=>registrations.doc(m.id)));
   snaps.forEach((snap,i)=>{if(snap.exists && approved(snap.data())) found.add(candidates[i].id);});
@@ -48,43 +48,57 @@ async function resolveUser(guild,rpId) {
   return null;
  }
  const userId=[...found][0];
- const member=members.get(userId);
+ const member=members?.get(userId) || await guild.members.fetch(userId).catch(()=>null);
  if(!member || member.user.bot) return null;
  return userId;
 }
-async function handleFiveMLog(message) {
- if (!message.guild || message.channelId!==channels.logsPontoCidade || !message.author?.bot) return;
+async function handleFiveMLog(message, {recovery=false}={}) {
+ if (!message.guild || message.channelId!==channels.logsPontoCidade || !message.author?.bot) return {kind:'ignored'};
  const event=parseLog(messageText(message));
- if (!event) return;
+ if (!event) return {kind:'ignored'};
  const age=Date.now()-event.atMs;
- if (age>MAX_EVENT_AGE_MS || age < -FUTURE_TOLERANCE_MS) {
-  console.warn(`[FiveM] Evento fora da janela de tempo: ${event.uuid}`); return;
+ if ((!recovery && age>MAX_EVENT_AGE_MS) || age < -FUTURE_TOLERANCE_MS) {
+  console.warn(`[FiveM] Evento fora da janela de tempo: ${event.uuid}`); return {kind:'out_of_window'};
  }
  const userId=await resolveUser(message.guild,event.rpId);
- if(!userId) return;
+ if(!userId) return {kind:'unresolved'};
  const ref=base(message.guild.id,userId);
  const eventRef=db.collection('guilds').doc(message.guild.id).collection('fivemPontoEvents').doc(event.uuid);
- let result=null;
+ let result=null, outcome='duplicate';
  await db.runTransaction(async tx=>{
   const [seen,snap]=await Promise.all([tx.get(eventRef),tx.get(ref)]);
   if(seen.exists) return;
   const old=snap.exists?snap.data():null;
   // O UUID identifica o evento, não a sessão. Registre também eventos ignorados.
   const audit={rpId:event.rpId,name:event.name,action:event.action,atMs:event.atMs,userId,sourceMessageId:message.id,processedAt:admin.firestore.FieldValue.serverTimestamp()};
+  // Uma mensagem antiga não pode mudar o estado de uma sessão mais recente.
+  if(old?.fivemLastEventAtMs && event.atMs < old.fivemLastEventAtMs) {outcome='conflict';return;}
   if(event.action==='open') {
    if(old && ['open','paused'].includes(old.status)) {
-    if(event.atMs<old.startedAtMs) {tx.create(eventRef,{...audit,result:'out_of_order'});return;}
+    if(event.atMs<old.startedAtMs) {outcome='conflict';return;}
+    if(old.status==='paused') {
+     if(!Number.isFinite(old.pauseStartedMs) || event.atMs < old.pauseStartedMs) {outcome='conflict';return;}
+     const pauseHistory=Array.isArray(old.pauseHistory)?old.pauseHistory.map(x=>({...x})):[];
+     const last=pauseHistory.at(-1);
+     if(last && !last.endedAtMs) last.endedAtMs=event.atMs;
+     else pauseHistory.push({startedAtMs:old.pauseStartedMs,endedAtMs:event.atMs});
+     const changes={status:'open',pauseStartedMs:null,pausedMs:(old.pausedMs||0)+Math.max(0,event.atMs-old.pauseStartedMs),pauseHistory,fivemLastEventAtMs:event.atMs,updatedAtMs:Date.now()};
+     tx.update(ref,changes);tx.set(ref.collection('sessions').doc(old.sessionId),changes,{merge:true});
+     tx.set(ref.collection('events').doc(event.uuid),{type:'resume',at:stamp(event.atMs),sessionId:old.sessionId,source:'fivem',sourceUuid:event.uuid});
+     tx.create(eventRef,{...audit,result:'resumed',sessionId:old.sessionId});
+     result={kind:'resumed',data:{...old,...changes}};return;
+    }
     const reentries=[...(old.fivemReentries||[]),{atMs:event.atMs,uuid:event.uuid}];
-    const changes={fivemReentries:reentries,fivemReviewPending:true,updatedAtMs:Date.now()};
+    const changes={fivemReentries:reentries,fivemReviewPending:true,fivemLastEventAtMs:event.atMs,updatedAtMs:Date.now()};
     tx.update(ref,changes);
     tx.set(ref.collection('sessions').doc(old.sessionId),changes,{merge:true});
     tx.set(ref.collection('events').doc(event.uuid),{type:'fivem_reentry',at:stamp(event.atMs),sessionId:old.sessionId,sourceUuid:event.uuid,reviewRequired:true});
     tx.create(eventRef,{...audit,result:'reentry'});
     result={kind:'reentry',data:{...old,...changes}};return;
    }
-   if(old && old.status==='closed' && event.atMs <= (old.closedAtMs||0)) {tx.create(eventRef,{...audit,result:'out_of_order'});return;}
+   if(old && old.status==='closed' && event.atMs <= (old.closedAtMs||0)) {outcome='conflict';return;}
    const sessionId=randomUUID();
-   const d={status:'open',sessionId,startedAtMs:event.atMs,pausedMs:0,pauseStartedMs:null,pauseHistory:[],channelId:channels.baterPonto,messageId:null,userId,guildId:message.guild.id,source:'fivem',fivemReviewPending:false,fivemReentries:[]};
+   const d={status:'open',sessionId,startedAtMs:event.atMs,pausedMs:0,pauseStartedMs:null,pauseHistory:[],channelId:channels.baterPonto,messageId:null,userId,guildId:message.guild.id,source:'fivem',fivemReviewPending:false,fivemReentries:[],fivemLastEventAtMs:event.atMs};
    tx.set(ref,{...d,startedAt:stamp(event.atMs),updatedAt:stamp(Date.now())});
    tx.set(ref.collection('sessions').doc(sessionId),{...d,startedAt:stamp(event.atMs)});
    tx.set(ref.collection('events').doc(event.uuid),{type:'open',at:stamp(event.atMs),sessionId,source:'fivem'});
@@ -92,23 +106,27 @@ async function handleFiveMLog(message) {
    result={kind:'opened',data:d};return;
   }
   if(!old || !['open','paused'].includes(old.status) || event.atMs<old.startedAtMs) {
-   tx.create(eventRef,{...audit,result:'no_matching_open_point'});return;
+   outcome='conflict';return;
   }
   const pauseHistory=Array.isArray(old.pauseHistory)?old.pauseHistory.map(x=>({...x})):[];
-  const pausedMs=(old.pausedMs||0)+(old.status==='paused'?Math.max(0,event.atMs-(old.pauseStartedMs||event.atMs)):0);
-  if(old.status==='paused') {
+  // Saída ocorrida antes de uma pausa manual: a pausa futura não deve entrar no cálculo.
+  if(old.status==='paused' && event.atMs < old.pauseStartedMs) {
+   if(pauseHistory.at(-1) && !pauseHistory.at(-1).endedAtMs) pauseHistory.pop();
+  }
+  const pausedMs=(old.pausedMs||0)+(old.status==='paused' && event.atMs>=old.pauseStartedMs?Math.max(0,event.atMs-old.pauseStartedMs):0);
+  if(old.status==='paused' && event.atMs>=old.pauseStartedMs) {
    const last=pauseHistory.at(-1);
    if(last && !last.endedAtMs) last.endedAtMs=event.atMs;
    else if(old.pauseStartedMs) pauseHistory.push({startedAtMs:old.pauseStartedMs,endedAtMs:event.atMs});
   }
-  const changes={status:'closed',closedAtMs:event.atMs,pausedMs,pauseStartedMs:null,pauseHistory,workedMs:Math.max(0,event.atMs-old.startedAtMs-pausedMs),updatedAtMs:Date.now(),closedBy:'fivem'};
+  const changes={status:'closed',closedAtMs:event.atMs,pausedMs,pauseStartedMs:null,pauseHistory,workedMs:Math.max(0,event.atMs-old.startedAtMs-pausedMs),updatedAtMs:Date.now(),closedBy:'fivem',fivemLastEventAtMs:event.atMs};
   tx.update(ref,changes);
   tx.set(ref.collection('sessions').doc(old.sessionId),changes,{merge:true});
   tx.set(ref.collection('events').doc(event.uuid),{type:'close',at:stamp(event.atMs),sessionId:old.sessionId,source:'fivem'});
   tx.create(eventRef,{...audit,result:'closed',sessionId:old.sessionId});
   result={kind:'closed',data:{...old,...changes}};
  });
- if(!result) return;
+ if(!result) return {kind:outcome};
  if(result.kind==='opened') {
   try {
    const ch=await message.guild.channels.fetch(channels.baterPonto);
@@ -136,5 +154,6 @@ async function handleFiveMLog(message) {
   if(result.kind==='closed') await log(message.guild,userId,'Encerrado',result.data,userId);
   if(result.kind==='reentry') console.warn(`[FiveM] Reconexão para revisão: ID ${event.rpId}, usuário ${userId}, sessão ${result.data.sessionId}`);
  }
+ return {kind:result.kind};
 }
 module.exports={handleFiveMLog,parseLog,messageText};

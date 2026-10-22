@@ -8,6 +8,7 @@ const { onMemberLeave, reconcileMembership } = require('./services/membership');
 const { ensurePanels } = require('./services/panels');
 const { handlePonto } = require('./services/ponto');
 const { handleFiveMLog } = require('./services/ponto-fivem');
+const {handleRecoverLogs}=require('./services/recuperar-logs-ponto');
 const { handleControle } = require('./services/controle-ponto');
 const { handleVistorias } = require('./services/vistorias');
 const { onMemberUpdate } = require('./services/sync-members');
@@ -45,6 +46,7 @@ client.on(Events.InteractionCreate,async interaction=>{
    if (interaction.commandName==='cadastrar-bombeiro') return await handleManualRegistration(interaction);
    if (interaction.commandName==='sincronizar-ids') return await handleSyncIds(interaction);
    if (interaction.commandName==='padronizar-nicks') return await handleNicks(interaction);
+   if (interaction.commandName==='recuperar-logs-ponto') return await handleRecoverLogs(interaction);
    if (interaction.commandName==='ponto') return await handlePonto(interaction);
    if (interaction.commandName==='ping') return interaction.reply({content:'🚒 Bombeirinho online!',flags:MessageFlags.Ephemeral});
    if (interaction.commandName==='painel') {
