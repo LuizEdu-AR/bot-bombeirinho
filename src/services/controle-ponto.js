@@ -1,5 +1,6 @@
 const {administrativeLog}=require('./logs-administrativos');
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, UserSelectMenuBuilder, MessageFlags } = require('discord.js');
+const { randomBytes } = require('node:crypto');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, UserSelectMenuBuilder, MessageFlags, AttachmentBuilder } = require('discord.js');
 const { db, admin } = require('./firebase');
 const { roles } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
@@ -10,7 +11,56 @@ const privateReply = content => ({ content, flags: MessageFlags.Ephemeral, allow
 const guildRef = guildId => db.collection('guilds').doc(guildId);
 const pointsRef = guildId => guildRef(guildId).collection('pontos');
 const settingsRef = guildId => guildRef(guildId).collection('settings').doc('rankingPonto');
-const duration = ms => { const minutes = Math.floor(Math.max(0, ms) / 60000); return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}min`; };
+const duration = ms => {
+  const minutes = Math.floor(Math.max(0, Number(ms) || 0) / 60000);
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  return `${days ? `${days}d ` : ''}${hours}h ${String(mins).padStart(2, '0')}min`;
+};
+
+// Mantém apenas resultados temporários para exportação, sem novas consultas ao Firebase.
+const rankingViews = new Map();
+const RANKING_TTL_MS = 15 * 60 * 1000;
+const RANKING_DESCRIPTION_LIMIT = 4096;
+function cleanRankingViews() {
+  const now = Date.now();
+  for (const [token, view] of rankingViews) {
+    if (view.expiresAt <= now) rankingViews.delete(token);
+  }
+  while (rankingViews.size >= 100) rankingViews.delete(rankingViews.keys().next().value);
+}
+function rankingEmbed(view) {
+  const header = `**Início:** ${view.since ? `<t:${Math.floor(view.since / 1000)}:F>` : 'Desde o início dos registros'}\n\n`;
+  const lines = view.totals.map((d, i) => `${i + 1}. <@${d.id}> — **${duration(d.ms)}**`);
+  let description = header;
+  let shown = 0;
+  for (const line of lines) {
+    if (description.length + line.length + 1 > RANKING_DESCRIPTION_LIMIT - 110) break;
+    description += `${line}\n`;
+    shown++;
+  }
+  if (!lines.length) description += 'Ainda não há horas encerradas neste período.';
+  if (shown < lines.length) description += `\n_Exibindo ${shown} de ${lines.length} bombeiros. O CSV contém o ranking completo._`;
+  const embed = new EmbedBuilder()
+    .setColor(0xc62828)
+    .setTitle('SSFD • Ranking de horas — período atual')
+    .setDescription(description)
+    .setFooter({ text: `${view.totals.length} bombeiro(s) • Ranking completo disponível em CSV` });
+  const buttons = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`controle:ranking:exportar:${view.token}`).setLabel('Exportar CSV').setStyle(ButtonStyle.Success)
+  );
+  return { content: '', embeds: [embed], components: [buttons], allowedMentions: { parse: [] } };
+}
+function rankingCsv(view) {
+  const rows = [['Posição', 'ID Discord', 'Bombeiro', 'Tempo trabalhado', 'Minutos trabalhados']];
+  view.totals.forEach((d, i) => rows.push([
+    String(i + 1), d.id, d.name || d.id, duration(d.ms), String(Math.floor(d.ms / 60000))
+  ]));
+  // UTF-8 com BOM e separador de ponto e vírgula para abrir corretamente no Excel em PT-BR.
+  const quote = value => `"${String(value).replace(/"/g, '""')}"`;
+  return Buffer.from('\uFEFF' + rows.map(row => row.map(quote).join(';')).join('\r\n') + '\r\n', 'utf8');
+}
 const timestampMs = value => typeof value?.toMillis === 'function' ? value.toMillis() : null;
 const worked = d => d.workedMs ?? Math.max(0, (d.closedAtMs || Date.now()) - d.startedAtMs - (d.pausedMs || 0) - (d.status === 'paused' ? Date.now() - (d.pauseStartedMs || Date.now()) : 0));
 
@@ -75,12 +125,24 @@ async function handleControle(interaction) {
   const id = interaction.customId;
   if (!id?.startsWith('controle:')) return;
   const supported = ['controle:abertos', 'controle:consultar', 'controle:ranking', 'controle:selecionar:consultar', 'controle:reset', 'controle:reset:confirmar', 'controle:reset:cancelar'];
-  if (!supported.includes(id)) return interaction.reply(privateReply('Esta ação foi removida do Controle de Ponto.'));
+  const exportMatch = /^controle:ranking:exportar:([a-f0-9]{16})$/.exec(id);
+  if (!supported.includes(id) && !exportMatch) return interaction.reply(privateReply('Esta ação foi removida do Controle de Ponto.'));
   const member = await memberFor(interaction);
   if (!member || !hasAnyRole(member, COMMAND)) return interaction.reply(privateReply('Você não possui permissão para esta ação.'));
   const canReset = hasAnyRole(member, RESET_ROLES);
   if (id.startsWith('controle:reset') && !canReset) return interaction.reply(privateReply('Somente Chefe, Chefe Adjunto ou Manutenção podem resetar o ranking.'));
 
+  if (exportMatch) {
+    const view = rankingViews.get(exportMatch[1]);
+    if (!view || view.expiresAt <= Date.now() || view.guildId !== interaction.guildId) {
+      return interaction.reply(privateReply('Este ranking expirou. Clique em Ranking novamente para exportar.'));
+    }
+    if (view.userId !== interaction.user.id) {
+      return interaction.reply(privateReply('Este ranking pertence a outra consulta. Abra o seu pelo botão Ranking.'));
+    }
+    const file = new AttachmentBuilder(rankingCsv(view), { name: 'ranking-horas-ssfd.csv' });
+    return interaction.reply({ content: 'Ranking completo em CSV:', files: [file], flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+  }
   if (id === 'controle:consultar') {
     return interaction.reply({ content: '**Consultar bombeiro**\nSelecione um membro para visualizar suas horas totais.', flags: MessageFlags.Ephemeral,
       components: [new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId('controle:selecionar:consultar').setPlaceholder('Selecione um membro').setMinValues(1).setMaxValues(1))] });
@@ -113,8 +175,11 @@ async function handleControle(interaction) {
       if (hours.period > 0) totals.push({ id: point.id, ms: hours.period });
     }
     totals.sort((a, b) => b.ms - a.ms);
-    const lines = totals.slice(0, 10).map((d, i) => `${i + 1}. <@${d.id}> — **${duration(d.ms)}**`);
-    return interaction.editReply({ content: `**🏆 Ranking de horas — período atual**\nInício: ${since ? `<t:${Math.floor(since / 1000)}:F>` : 'Desde o início dos registros'}\n\n${lines.join('\n') || 'Ainda não há horas encerradas neste período.'}`, allowedMentions: { parse: [] } });
+    cleanRankingViews();
+    const token = randomBytes(8).toString('hex');
+    const view = { token, guildId: interaction.guildId, userId: interaction.user.id, since, totals, expiresAt: Date.now() + RANKING_TTL_MS };
+    rankingViews.set(token, view);
+    return interaction.editReply(rankingEmbed(view));
   }
   if (id === 'controle:reset') {
     const snap = await settingsRef(interaction.guildId).get();
