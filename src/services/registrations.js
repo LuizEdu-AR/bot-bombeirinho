@@ -35,7 +35,7 @@ function typeMenu() {
 function panel() {
  return {
   embeds:[new EmbedBuilder().setColor(0xd92929).setTitle('🚒 SSFD • Setagem')
-   .setDescription('Bem-vindo ao South State Fire Department! Para acessar os canais do servidor, clique em **Realizar cadastro**, informe seus dados do RP e aguarde a autorização da administração.\n\nPara os membros da Staff colocar seu cargo no ID(MOD, SPV, ADM, etc) e para os membros do Corpo de Bombeiros colocar seu ID numérico (ex.: 194).')],
+   .setDescription('Bem-vindo ao South State Fire Department! Para acessar os canais do servidor, clique em **Realizar cadastro**, informe seus dados do RP e aguarde a autorização da administração.\n\nPara os membros da Staff colocar seu cargo no ID(MOD, SPV, ADM, etc) e para os demais membros do SSFD, Jurídico ou outras corporações colocar o ID numérico (ex.: 194).')],
   components:[new ActionRowBuilder().addComponents(
    new ButtonBuilder().setCustomId('reg:start').setLabel('Realizar cadastro').setStyle(ButtonStyle.Primary)
   )]
