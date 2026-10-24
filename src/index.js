@@ -6,6 +6,7 @@ const { panel, handleRegistration } = require('./services/registrations');
 require('./services/firebase');
 const { onMemberLeave, reconcileMembership } = require('./services/membership');
 const { ensurePanels } = require('./services/panels');
+const { ensureBotHelp } = require('./services/bot-help');
 const { handlePonto } = require('./services/ponto');
 const { handleFiveMLog } = require('./services/ponto-fivem');
 const {handleRecoverLogs}=require('./services/recuperar-logs-ponto');
@@ -37,6 +38,7 @@ client.on(Events.GuildMemberAdd, member => reconcileMembership(member).catch(err
 client.once(Events.ClientReady, async c => {
  console.log(`🚒 Bombeirinho online como ${c.user.tag}`);
  await ensurePanels(c);
+ await ensureBotHelp(c).catch(err => console.error('[Bot Help] Erro:', err));
 });
 client.on(Events.InteractionCreate,async interaction=>{
  try {

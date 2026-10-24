@@ -1,6 +1,7 @@
 module.exports = {
  channels: {
   setagem: '1560289647232290958',
+  botHelp: '1563349171623428126',
   cadastrarVistoria: '1560289853525205102',
   agendamentoVistoria: '1560289969954885723',
   informesVistorias: '1560342444808212551',
