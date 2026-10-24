@@ -72,7 +72,9 @@ async function handleFiveMLog(message, {recovery=false}={}) {
   // O UUID identifica o evento, não a sessão. Registre também eventos ignorados.
   const audit={rpId:event.rpId,name:event.name,action:event.action,atMs:event.atMs,userId,sourceMessageId:message.id,processedAt:admin.firestore.FieldValue.serverTimestamp()};
   // Uma mensagem antiga não pode mudar o estado de uma sessão mais recente.
-  if(old?.fivemLastEventAtMs && event.atMs < old.fivemLastEventAtMs) {outcome='conflict';return;}
+  if(old?.fivemLastEventAtMs && (event.atMs < old.fivemLastEventAtMs ||
+     (event.atMs === old.fivemLastEventAtMs && old.fivemLastMessageId &&
+      BigInt(message.id) <= BigInt(old.fivemLastMessageId)))) {outcome='conflict';return;}
   if(event.action==='open') {
    if(old && ['open','paused'].includes(old.status)) {
     if(event.atMs<old.startedAtMs) {outcome='conflict';return;}
@@ -82,23 +84,32 @@ async function handleFiveMLog(message, {recovery=false}={}) {
      const last=pauseHistory.at(-1);
      if(last && !last.endedAtMs) last.endedAtMs=event.atMs;
      else pauseHistory.push({startedAtMs:old.pauseStartedMs,endedAtMs:event.atMs});
-     const changes={status:'open',pauseStartedMs:null,pausedMs:(old.pausedMs||0)+Math.max(0,event.atMs-old.pauseStartedMs),pauseHistory,fivemLastEventAtMs:event.atMs,updatedAtMs:Date.now()};
+     const changes={status:'open',pauseStartedMs:null,pausedMs:(old.pausedMs||0)+Math.max(0,event.atMs-old.pauseStartedMs),pauseHistory,fivemLastEventAtMs:event.atMs,fivemLastMessageId:message.id,updatedAtMs:Date.now()};
      tx.update(ref,changes);tx.set(ref.collection('sessions').doc(old.sessionId),changes,{merge:true});
      tx.set(ref.collection('events').doc(event.uuid),{type:'resume',at:stamp(event.atMs),sessionId:old.sessionId,source:'fivem',sourceUuid:event.uuid});
      tx.create(eventRef,{...audit,result:'resumed',sessionId:old.sessionId});
      result={kind:'resumed',data:{...old,...changes}};return;
     }
     const reentries=[...(old.fivemReentries||[]),{atMs:event.atMs,uuid:event.uuid}];
-    const changes={fivemReentries:reentries,fivemReviewPending:true,fivemLastEventAtMs:event.atMs,updatedAtMs:Date.now()};
+    const changes={fivemReentries:reentries,fivemReviewPending:true,fivemLastEventAtMs:event.atMs,fivemLastMessageId:message.id,updatedAtMs:Date.now()};
     tx.update(ref,changes);
     tx.set(ref.collection('sessions').doc(old.sessionId),changes,{merge:true});
     tx.set(ref.collection('events').doc(event.uuid),{type:'fivem_reentry',at:stamp(event.atMs),sessionId:old.sessionId,sourceUuid:event.uuid,reviewRequired:true});
     tx.create(eventRef,{...audit,result:'reentry'});
     result={kind:'reentry',data:{...old,...changes}};return;
    }
-   if(old && old.status==='closed' && event.atMs <= (old.closedAtMs||0)) {outcome='conflict';return;}
+   // FiveM registra apenas segundos: SAÍDA e nova ENTRADA podem ter o mesmo horário.
+   // O UUID diferencia os eventos. Para empates, respeitar a ordem das mensagens
+   // quando houver ID anterior armazenado; não reabrir sessões por eventos antigos.
+   if(old && old.status==='closed') {
+    if(event.atMs < (old.closedAtMs||0)) {outcome='conflict';return;}
+    if(event.atMs === (old.closedAtMs||0)) {
+     if(old.closedBy !== 'fivem') {outcome='conflict';return;}
+     if(old.fivemLastMessageId && BigInt(message.id) <= BigInt(old.fivemLastMessageId)) {outcome='conflict';return;}
+    }
+   }
    const sessionId=randomUUID();
-   const d={status:'open',sessionId,startedAtMs:event.atMs,pausedMs:0,pauseStartedMs:null,pauseHistory:[],channelId:channels.baterPonto,messageId:null,userId,guildId:message.guild.id,source:'fivem',fivemReviewPending:false,fivemReentries:[],fivemLastEventAtMs:event.atMs};
+   const d={status:'open',sessionId,startedAtMs:event.atMs,pausedMs:0,pauseStartedMs:null,pauseHistory:[],channelId:channels.baterPonto,messageId:null,userId,guildId:message.guild.id,source:'fivem',fivemReviewPending:false,fivemReentries:[],fivemLastEventAtMs:event.atMs,fivemLastMessageId:message.id};
    tx.set(ref,{...d,startedAt:stamp(event.atMs),updatedAt:stamp(Date.now())});
    tx.set(ref.collection('sessions').doc(sessionId),{...d,startedAt:stamp(event.atMs)});
    tx.set(ref.collection('events').doc(event.uuid),{type:'open',at:stamp(event.atMs),sessionId,source:'fivem'});
@@ -120,7 +131,7 @@ async function handleFiveMLog(message, {recovery=false}={}) {
      ? adjustedHistory.reduce((sum,h)=>sum+Math.max(0,h.endedAtMs-h.startedAtMs),0)
      : (history.length ? 0 : Math.min(old.pausedMs||0,Math.max(0,event.atMs-old.startedAtMs)));
    const changes={closedAtMs:event.atMs,workedMs:Math.max(0,event.atMs-old.startedAtMs-pausedMs),
-    pausedMs,pauseHistory:adjustedHistory,closedBy:'fivem',fivemLastEventAtMs:event.atMs,
+    pausedMs,pauseHistory:adjustedHistory,closedBy:'fivem',fivemLastEventAtMs:event.atMs,fivemLastMessageId:message.id,
     updatedAtMs:Date.now(),fivemManualCloseCorrection:{previousClosedAtMs:previousClose,correctedAtMs:event.atMs,sourceUuid:event.uuid}};
    tx.update(ref,changes);
    tx.set(ref.collection('sessions').doc(old.sessionId),changes,{merge:true});
@@ -143,7 +154,7 @@ async function handleFiveMLog(message, {recovery=false}={}) {
    if(last && !last.endedAtMs) last.endedAtMs=event.atMs;
    else if(old.pauseStartedMs) pauseHistory.push({startedAtMs:old.pauseStartedMs,endedAtMs:event.atMs});
   }
-  const changes={status:'closed',closedAtMs:event.atMs,pausedMs,pauseStartedMs:null,pauseHistory,workedMs:Math.max(0,event.atMs-old.startedAtMs-pausedMs),updatedAtMs:Date.now(),closedBy:'fivem',fivemLastEventAtMs:event.atMs};
+  const changes={status:'closed',closedAtMs:event.atMs,pausedMs,pauseStartedMs:null,pauseHistory,workedMs:Math.max(0,event.atMs-old.startedAtMs-pausedMs),updatedAtMs:Date.now(),closedBy:'fivem',fivemLastEventAtMs:event.atMs,fivemLastMessageId:message.id};
   tx.update(ref,changes);
   tx.set(ref.collection('sessions').doc(old.sessionId),changes,{merge:true});
   tx.set(ref.collection('events').doc(event.uuid),{type:'close',at:stamp(event.atMs),sessionId:old.sessionId,source:'fivem'});
