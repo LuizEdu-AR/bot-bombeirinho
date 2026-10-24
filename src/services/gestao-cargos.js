@@ -6,17 +6,22 @@ const {saveSnapshot}=require('./sync-members');
 const {administrativeLog}=require('./logs-administrativos');
 const admins=[roles.chefe,roles.chefeAdjunto];
 const ANNOUNCEMENTS_CHANNEL='1560354767740346438';
+const CERTIFICATES_CHANNEL='1439957901803520121';
 const EXONERATION_CHANNEL=channels.exoneracao;
 const dismissalDrafts=new Map();
 const restorationDrafts=new Map();
 const dismissalKey=i=>`${i.guildId}:${i.user.id}`;
 const BOMBEIROS_ROLE='1518804307607163130';
 const scheduleDrafts=new Map();
+const multiGrantDrafts=new Map();
 const scheduleCourseKeys=['ems','fiu','preventionBureau','pac','pqd','specOpsFlight','specOpsSea','fireEngineering'];
 const scheduleCourseNames={ems:'EMS',fiu:'FIU',preventionBureau:'Prevention Bureau',pac:'PAC',pqd:'PQD',specOpsFlight:'Spec Ops Flight',specOpsSea:'Spec Ops Sea',fireEngineering:'Fire Engineering'};
 const scheduleCourseAliases={ems:['ems'],fiu:['fiu'],preventionBureau:['preventionBureau'],pac:['pac'],pqd:['pqd'],specOpsFlight:['specOpsFlight'],specOpsSea:['specOpsSea'],fireEngineering:['fireEngineering']};
 const courseKeyFor=key=>(scheduleCourseAliases[key]||[]).find(k=>courses[k]);
 const draftKey=i=>`${i.guildId}:${i.user.id}`;
+function getMultiDraft(i){const d=multiGrantDrafts.get(draftKey(i));if(!d||Date.now()-d.createdAt>15*60*1000){multiGrantDrafts.delete(draftKey(i));return null;}return d;}
+function parseSessions(raw){const entries=raw.split(/[\n;]+/).map(x=>x.trim()).filter(Boolean);if(!entries.length||entries.length>20)return null;const sessions=[];for(const entry of entries){const m=/^(\d{2}\/\d{2}\/\d{4})\s*[-–:]\s*(.+)$/.exec(entry);if(!m)return null;const times=m[2].split(/[,\s]+/).map(t=>t.trim()).filter(Boolean);if(!times.length||times.length>10||times.some(t=>!validDate(m[1],t)))return null;for(const time of times)sessions.push({date:m[1],time});}const unique=[...new Map(sessions.map(x=>[`${x.date} ${x.time}`,x])).values()];if(unique.length>30)return null;unique.sort((a,b)=>{const fmt=x=>x.date.slice(6)+x.date.slice(3,5)+x.date.slice(0,2)+x.time;return fmt(a).localeCompare(fmt(b));});return unique;}
+function sessionText(sessions){return [...new Set(sessions.map(s=>s.date))].map(date=>`• **${date}** — ${sessions.filter(s=>s.date===date).map(s=>s.time.replace(':','h')).join(', ')}`).join('\n');}
 function getDraft(i){const d=scheduleDrafts.get(draftKey(i));if(!d||Date.now()-d.createdAt>15*60*1000){scheduleDrafts.delete(draftKey(i));return null;}return d;}
 function validDate(date,time){const m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(date);const t=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);if(!m||!t)return false;const day=+m[1],month=+m[2],year=+m[3];const d=new Date(Date.UTC(year,month-1,day));return d.getUTCFullYear()===year&&d.getUTCMonth()===month-1&&d.getUTCDate()===day&&year>=2026&&year<=2100;}
 
@@ -54,15 +59,16 @@ async function handleGestao(interaction){
  }
  if(id==='gest:schedule'&&interaction.isButton()){
   const modal=new ModalBuilder().setCustomId('gest:schedulemodal').setTitle('Agendar curso interno');
-  for(const [key,label,placeholder,max] of [['date','Data (DD/MM/AAAA)','Ex.: 20/10/2026',10],['time','Horário (HH:MM)','Ex.: 19:30',5],['location','Local de início','Ex.: Quartel Central',120]])modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(key).setLabel(label).setPlaceholder(placeholder).setStyle(TextInputStyle.Short).setMaxLength(max).setRequired(true)));
+  modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('sessions').setLabel('Datas e horários (uma data por linha)').setPlaceholder('29/10/2026 - 15:30, 20:00\n30/10/2026 - 14:00').setStyle(TextInputStyle.Paragraph).setMaxLength(1000).setRequired(true)));
+  modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('location').setLabel('Local de início').setPlaceholder('Ex.: Quartel Central').setStyle(TextInputStyle.Short).setMaxLength(120).setRequired(true)));
   return interaction.showModal(modal);
  }
  if(id==='gest:schedulemodal'&&interaction.isModalSubmit()){
-  const date=interaction.fields.getTextInputValue('date').trim(),time=interaction.fields.getTextInputValue('time').trim(),location=clean(interaction.fields.getTextInputValue('location'));
-  if(!validDate(date,time)||!location)return interaction.reply({content:'Informe data válida em DD/MM/AAAA, horário HH:MM (24h) e local de início.',...ephemeral});
+  const sessions=parseSessions(interaction.fields.getTextInputValue('sessions').trim()),location=clean(interaction.fields.getTextInputValue('location'));
+  if(!sessions||!location)return interaction.reply({content:'Informe até 20 linhas no formato DD/MM/AAAA - HH:MM, HH:MM. Confira datas e horários (24h).',...ephemeral});
   const available=scheduleCourseKeys.filter(k=>courseKeyFor(k));
   if(!available.length)return interaction.reply({content:'Não encontrei os cargos dos cursos previstos no PDF. Confira src/config/ids.js.',...ephemeral});
-  scheduleDrafts.set(draftKey(interaction),{date,time,location,createdAt:Date.now()});
+  scheduleDrafts.set(draftKey(interaction),{sessions,location,createdAt:Date.now()});
   return interaction.reply({content:'Selecione **um ou mais cursos** para esta realização:',components:[new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('gest:schedulecourses').setPlaceholder('Cursos desta turma').setMinValues(1).setMaxValues(available.length).addOptions(available.map(k=>({label:scheduleCourseNames[k],value:k}))))],...ephemeral});
  }
  if(id==='gest:schedulecourses'&&interaction.isStringSelectMenu()){
@@ -75,7 +81,7 @@ async function handleGestao(interaction){
   const d=getDraft(interaction);if(!d||!d.courses)return interaction.update({content:'Agendamento expirado. Recomece.',components:[]});
   const instructor=await memberFor(interaction,interaction.values[0]);if(!instructor||instructor.user.bot)return interaction.update({content:'Escolha um instrutor válido que esteja no servidor.',components:[]});
   d.instructorId=instructor.id;
-  return interaction.update({content:`**Confirme o agendamento:**\n**Curso(s):** ${d.courses.map(k=>scheduleCourseNames[k]).join(', ')}\n**Data:** ${d.date}\n**Horário:** ${d.time}\n**Local:** ${d.location}\n**Instrutor:** <@${d.instructorId}>\n\nO anúncio mencionará o cargo Bombeiros.`,components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('gest:schedulepublish').setLabel('Publicar agendamento').setStyle(ButtonStyle.Success),new ButtonBuilder().setCustomId('gest:schedulecancel').setLabel('Cancelar').setStyle(ButtonStyle.Secondary))],allowedMentions:{parse:[]}});
+  return interaction.update({content:`**Confirme o agendamento:**\n**Curso(s):** ${d.courses.map(k=>scheduleCourseNames[k]).join(', ')}\n**Datas e horários:**\n${sessionText(d.sessions)}\n**Local:** ${d.location}\n**Instrutor:** <@${d.instructorId}>\n\nO anúncio mencionará o cargo Bombeiros.`,components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('gest:schedulepublish').setLabel('Publicar agendamento').setStyle(ButtonStyle.Success),new ButtonBuilder().setCustomId('gest:schedulecancel').setLabel('Cancelar').setStyle(ButtonStyle.Secondary))],allowedMentions:{parse:[]}});
  }
  if(id==='gest:schedulecancel'&&interaction.isButton()){scheduleDrafts.delete(draftKey(interaction));return interaction.update({content:'Agendamento cancelado.',components:[]});}
  if(id==='gest:schedulepublish'&&interaction.isButton()){
@@ -83,14 +89,14 @@ async function handleGestao(interaction){
   await interaction.deferUpdate();
   const channel=await interaction.guild.channels.fetch(ANNOUNCEMENTS_CHANNEL).catch(()=>null);
   if(!channel||!channel.isTextBased()||typeof channel.send!=='function')return interaction.editReply({content:'Canal de anúncios não encontrado ou inacessível. Nenhum agendamento foi publicado.',components:[]});
-  const embed=new EmbedBuilder().setColor(0xd92929).setTitle('🚒 SSFD | Cursos Internos — Agendamento').setDescription('Uma nova atividade de capacitação foi programada para os integrantes do **South State Fire Department**.').addFields({name:'📚 Curso(s)',value:d.courses.map(k=>`• ${scheduleCourseNames[k]}`).join('\n'),inline:false},{name:'📅 Data',value:d.date,inline:true},{name:'🕒 Horário',value:d.time,inline:true},{name:'📍 Local de início',value:d.location,inline:false},{name:'👨‍🚒 Instrutor responsável',value:`<@${d.instructorId}>`,inline:false}).setFooter({text:'SSFD • Cursos Internos'}).setTimestamp();
+  const embed=new EmbedBuilder().setColor(0xd92929).setTitle('🚒 SSFD | Cursos Internos — Agendamento').setDescription('Uma nova atividade de capacitação foi programada para os integrantes do **South State Fire Department**.').addFields({name:'📚 Curso(s)',value:d.courses.map(k=>`• ${scheduleCourseNames[k]}`).join('\n'),inline:false},{name:'📅 Datas e horários',value:sessionText(d.sessions),inline:false},{name:'📍 Local de início',value:d.location,inline:false},{name:'👨‍🚒 Instrutor responsável',value:`<@${d.instructorId}>`,inline:false}).setFooter({text:'SSFD • Cursos Internos'}).setTimestamp();
   let msg;try{msg=await channel.send({content:`<@&${BOMBEIROS_ROLE}>`,embeds:[embed],allowedMentions:{parse:[],roles:[BOMBEIROS_ROLE]}});}catch(err){console.error('[Gestão] Publicar agendamento:',err);return interaction.editReply({content:'Falha ao publicar o anúncio. Confira as permissões do bot e a menção ao cargo Bombeiros.',components:[]});}
   scheduleDrafts.delete(draftKey(interaction));
-  await administrativeLog(interaction.guildId,'course_scheduled',{actorId:interaction.user.id,targetId:d.instructorId,details:{Cursos:d.courses.map(k=>scheduleCourseNames[k]).join(', '),Data:d.date,Horário:d.time,Local:d.location},key:`course-${msg.id}`});
-  try{await db.collection('guilds').doc(interaction.guildId).collection('courseSchedules').doc(msg.id).set({date:d.date,time:d.time,location:d.location,courses:d.courses,instructorId:d.instructorId,createdBy:interaction.user.id,channelId:channel.id,messageId:msg.id,status:'scheduled',createdAt:admin.firestore.FieldValue.serverTimestamp()});}catch(err){console.error('[Gestão] Salvar agendamento:',err);return interaction.editReply({content:`Anúncio publicado: ${msg.url}\n⚠️ Não foi possível registrar no Firebase. Confira os logs antes de repetir.`,components:[]});}
+  await administrativeLog(interaction.guildId,'course_scheduled',{actorId:interaction.user.id,targetId:d.instructorId,details:{Cursos:d.courses.map(k=>scheduleCourseNames[k]).join(', '),Programação:sessionText(d.sessions),Local:d.location},key:`course-${msg.id}`});
+  try{await db.collection('guilds').doc(interaction.guildId).collection('courseSchedules').doc(msg.id).set({date:d.sessions[0].date,time:d.sessions[0].time,sessions:d.sessions,location:d.location,courses:d.courses,instructorId:d.instructorId,createdBy:interaction.user.id,channelId:channel.id,messageId:msg.id,status:'scheduled',createdAt:admin.firestore.FieldValue.serverTimestamp()});}catch(err){console.error('[Gestão] Salvar agendamento:',err);return interaction.editReply({content:`Anúncio publicado: ${msg.url}\n⚠️ Não foi possível registrar no Firebase. Confira os logs antes de repetir.`,components:[]});}
   return interaction.editReply({content:`Agendamento publicado com sucesso: ${msg.url}`,components:[]});
  }
- if(id==='gest:course')return interaction.reply({content:'Selecione o curso que deseja gerenciar:',components:[new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('gest:coursepick').setPlaceholder('Selecione um curso reconhecido pelo SSFD').addOptions(courseOptions))],...ephemeral});
+ if(id==='gest:course')return interaction.reply({content:'Selecione o curso que deseja gerenciar:',components:[new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('gest:coursepick').setPlaceholder('Selecione um ou mais cursos reconhecidos').setMinValues(1).setMaxValues(Math.min(25,courseOptions.length)).addOptions(courseOptions))],...ephemeral});
  if(['gest:edit','gest:dismiss','gest:restore'].includes(id))return interaction.reply({content:'Selecione o bombeiro que deseja gerenciar:',components:[selectUser(id.split(':')[1])],...ephemeral});
  if(id.startsWith('gest:user:') && interaction.isUserSelectMenu()){
   const action=id.split(':')[2],target=interaction.values[0],m=await memberFor(interaction,target);
@@ -154,8 +160,10 @@ async function handleGestao(interaction){
  }
  if(id==='gest:cancel'){restorationDrafts.delete(dismissalKey(interaction));dismissalDrafts.delete(dismissalKey(interaction));return interaction.update({content:'Ação cancelada. Nenhum dado foi alterado.',components:[]});}
  if(id==='gest:coursepick'&&interaction.isStringSelectMenu()){
-  const key=interaction.values[0];
-  if(!courses[key])return interaction.update({content:'Curso inválido.',components:[]});
+  const keys=[...new Set(interaction.values)];
+  if(!keys.length||keys.some(k=>!courses[k]))return interaction.update({content:'Curso inválido.',components:[]});
+  if(keys.length>1){multiGrantDrafts.set(draftKey(interaction),{keys,createdAt:Date.now()});return interaction.update({content:`Cursos selecionados: **${keys.map(k=>courseOptions.find(c=>c.value===k).label).join(', ')}**.\nSelecione de 1 a 25 bombeiros para receber todos os cursos:`,components:[new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId('gest:multiusers').setPlaceholder('Selecione os bombeiros').setMinValues(1).setMaxValues(25))]});}
+  const key=keys[0];
   return interaction.update({content:`Curso selecionado: **${courseOptions.find(c=>c.value===key).label}**. Escolha a operação:`,components:[new ActionRowBuilder().addComponents(
    new ButtonBuilder().setCustomId(`gest:grantselect:${key}`).setLabel('Atribuir a vários membros').setStyle(ButtonStyle.Success),
    new ButtonBuilder().setCustomId(`gest:revokeselect:${key}`).setLabel('Remover de um membro').setStyle(ButtonStyle.Danger),
@@ -167,6 +175,42 @@ async function handleGestao(interaction){
   if(!courses[key])return interaction.update({content:'Curso inválido.',components:[]});
   const grant=operation==='grantselect';
   return interaction.update({content:grant?'Selecione de 1 a 25 membros que receberão o curso. Apenas quem ainda não possui o cargo será incluído no anúncio.':'Selecione o membro de quem deseja remover o curso (sem anúncio).',components:[new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId(`gest:courseusers:${grant?'grant':'revoke'}:${key}`).setPlaceholder(grant?'Selecione até 25 membros':'Selecione um membro').setMinValues(1).setMaxValues(grant?25:1))]});
+ }
+ if(id==='gest:multiusers'&&interaction.isUserSelectMenu()){
+  const draft=getMultiDraft(interaction);
+  if(!draft)return interaction.update({content:'Seleção expirada. Inicie novamente.',components:[]});
+  await interaction.deferUpdate();
+  multiGrantDrafts.delete(draftKey(interaction));
+  const summary=[],announcements=[];
+  let added=0,already=0,failed=0;
+  for(const userId of [...new Set(interaction.values)]){
+   const member=await memberFor(interaction,userId);
+   if(!member||member.user.bot){failed+=draft.keys.length;continue;}
+   const missing=draft.keys.filter(k=>!member.roles.cache.has(courses[k]));
+   already+=draft.keys.length-missing.length;
+   if(!missing.length)continue;
+   const successful=[];
+   for(const key of missing){try{await member.roles.add(courses[key],`Cursos atribuídos por ${interaction.user.id}`);successful.push(key);added++;}catch(err){failed++;console.error('[Gestão] Atribuir múltiplos cursos:',userId,key,err);}}
+   if(!successful.length)continue;
+   try{
+    const ref=reg(interaction.guildId,userId),snap=await ref.get(),data=snap.data()||{};
+    const current=Array.isArray(data.courseCertifications)?data.courseCertifications:Array.isArray(data.previousCourses)?data.previousCourses:[];
+    await ref.set({courseCertifications:[...new Set([...current,...successful])],updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
+    await log(interaction,userId,'courses_granted',{courses:successful});
+   }catch(err){console.error('[Gestão] Histórico múltiplos cursos:',err);summary.push(`Histórico de <@${userId}> requer conferência.`);}
+   announcements.push({userId,keys:successful});
+  }
+  if(announcements.length){
+   const ch=await interaction.guild.channels.fetch(CERTIFICATES_CHANNEL).catch(()=>null);
+   if(ch&&ch.isTextBased()&&typeof ch.send==='function'){
+    const lines=announcements.flatMap(({userId,keys})=>keys.map(k=>`• <@${userId}> — ${courseOptions.find(c=>c.value===k)?.label||k}`));
+    const chunks=[];let chunk='';for(const line of lines){if(chunk.length+line.length+1>3500){chunks.push(chunk);chunk='';}chunk+=(chunk?'\n':'')+line;}if(chunk)chunks.push(chunk);
+    for(const [i,part] of chunks.entries()){
+     try{await ch.send({embeds:[new EmbedBuilder().setColor(0xC62828).setTitle('SSFD | Certificações de Cursos').setDescription(part).addFields({name:'Atribuído por',value:`<@${interaction.user.id}>`}).setFooter({text:`Certificações • ${i+1}/${chunks.length}`}).setTimestamp()],allowedMentions:{parse:[]}});}catch(err){console.error('[Gestão] Publicar certificados:',err);summary.push('Falha ao publicar uma mensagem de certificação.');}
+    }
+   }else summary.push('Canal de certificados inacessível.');
+  }
+  return interaction.editReply({content:`Atribuições concluídas: **${added}**. Já possuíam: **${already}**. Falhas: **${failed}**.${summary.length?'\n'+summary.join('\n'):''}`,components:[]});
  }
  if(id.startsWith('gest:courseusers:')&&interaction.isUserSelectMenu()){
   await interaction.deferUpdate();
@@ -193,7 +237,7 @@ async function handleGestao(interaction){
   }
   let notice='';
   if(operation==='grant'&&granted.length){
-   const ch=await interaction.guild.channels.fetch(ANNOUNCEMENTS_CHANNEL).catch(()=>null);
+   const ch=await interaction.guild.channels.fetch(CERTIFICATES_CHANNEL).catch(()=>null);
    if(!ch||!ch.isTextBased()||typeof ch.send!=='function')notice='⚠️ O curso foi atribuído, mas o canal de anúncios não está acessível.';
    else{
     const courseName=courseOptions.find(c=>c.value===key).label;
