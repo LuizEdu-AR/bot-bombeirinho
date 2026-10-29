@@ -1,5 +1,8 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 module.exports = [
+ new SlashCommandBuilder().setName('painel-telefone').setDescription('Publica um painel para bombeiros atualizarem seu telefone RP.')
+  .addChannelOption(o => o.setName('canal').setDescription('Canal para publicar (padrão: canal atual)').setRequired(false).addChannelTypes(0, 5))
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
  new SlashCommandBuilder().setName('analisar-estabelecimentos').setDescription('Lê o Jurídico antigo e gera relatório sem alterar o Firebase.').setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
  new SlashCommandBuilder().setName('sincronizar-cursos').setDescription('Salva cursos no Firebase (Chefia ou Manutenção).'),
  new SlashCommandBuilder().setName('cadastrar-bombeiro').setDescription('Cadastra manualmente um bombeiro no Firebase (Chefia ou Manutenção).')

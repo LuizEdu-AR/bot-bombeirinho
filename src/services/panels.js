@@ -104,4 +104,9 @@ async function ensurePanels(client) {
   }
 }
 
-module.exports = { ensurePanels, ensureSetagemPanel, ensureControlePanel };
+// Recuperação direcionada: não reconstrói os demais painéis nem duplica mensagens.
+async function ensureCadastroVistoriaPanel(guild) {
+ return ensureVistoriaPanel(guild, 'cadastrarVistoria', channels.cadastrarVistoria,
+  '🚒 SSFD • Cadastrar Vistoria', cadastroPanel);
+}
+module.exports = { ensurePanels, ensureSetagemPanel, ensureControlePanel, ensureCadastroVistoriaPanel };

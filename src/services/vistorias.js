@@ -21,13 +21,13 @@ const e=(title,desc)=>new EmbedBuilder().setColor(0xd92929).setTitle(title).setD
 const reply=(i,content)=>i.reply({content,flags:EP});
 // A private navigation bar keeps the next operation accessible without scrolling.
 const nav=()=>[row(b('vist:menu','Voltar ao menu',ButtonStyle.Primary),b('vist:close','Fechar'))];
-const privateMenu=()=>({content:'**🚒 SSFD • Gerenciamento de Vistorias**\nEscolha uma operação:',embeds:[],components:[row(b('vist:agendar','Agendar Vistoria',ButtonStyle.Primary),b('vist:cadastrar','Cadastrar Vistoria',ButtonStyle.Success),b('vist:editar','Editar Vistoria')),row(b('vist:excluir','Excluir Estabelecimento',ButtonStyle.Danger),b('vist:close','Fechar'))]});
+const privateMenu=()=>({content:'**🚒 SSFD • Gerenciamento de Vistorias**\nEscolha uma operação:',embeds:[],components:[row(b('vist:agendar','Agendar Vistoria',ButtonStyle.Primary),b('vist:cadastrar','Cadastrar Vistoria',ButtonStyle.Success),b('vist:editar','Editar Estabelecimento')),row(b('vist:excluir','Excluir Estabelecimento',ButtonStyle.Danger),b('vist:close','Fechar'))]});
 // Discord modals sometimes carry their originating message, sometimes not.
 // Update it when possible; otherwise create the mandatory ephemeral modal response.
 async function modalAck(i){if(i.message){await i.deferUpdate();return true;}await i.deferReply({flags:EP});return false;}
 const privateEdit=(i,content,components=nav())=>i.editReply({content,embeds:[],components});
 
-function cadastroPanel(){return {embeds:[e('🚒 SSFD • Cadastrar Vistoria','**Agendar Vistoria:** encaminha um estabelecimento cadastrado para a equipe de bombeiros.\n**Cadastrar Vistoria:** registra estabelecimento, proprietário e sócios.\n**Editar Vistoria:** atualiza os dados de um estabelecimento.\n**Excluir Estabelecimento:** desativa o cadastro sem apagar o histórico.')],components:[row(b('vist:agendar','Agendar Vistoria',ButtonStyle.Primary),b('vist:cadastrar','Cadastrar Vistoria',ButtonStyle.Success),b('vist:editar','Editar Vistoria')),row(b('vist:excluir','Excluir Estabelecimento',ButtonStyle.Danger))]};}
+function cadastroPanel(){return {embeds:[e('🚒 SSFD • Cadastrar Vistoria','**Agendar Vistoria:** encaminha um estabelecimento cadastrado para a equipe de bombeiros.\n**Cadastrar Vistoria:** registra estabelecimento, proprietário e sócios.\n**Editar Estabelecimento:** atualiza os dados de um estabelecimento.\n**Excluir Estabelecimento:** desativa o cadastro sem apagar o histórico.')],components:[row(b('vist:agendar','Agendar Vistoria',ButtonStyle.Primary),b('vist:cadastrar','Cadastrar Vistoria',ButtonStyle.Success),b('vist:editar','Editar Estabelecimento')),row(b('vist:excluir','Excluir Estabelecimento',ButtonStyle.Danger))]};}
 function agendaPanel(){return {embeds:[e('🚒 SSFD • Agendamento de Vistorias','Os agendamentos do Jurídico serão publicados neste canal. Utilize os botões de cada vistoria para registrar contato, cancelar ou concluir.')],components:[]};}
 async function actor(g,u){const s=await guildRef(g).collection('registrations').doc(u.id).get();const d=s.data()||{};return {discordId:u.id,name:clean(d.name||u.displayName||u.username,80),rpId:clean(d.rpId||'Não cadastrado',30),phone:clean(d.phone||'Não cadastrado',40)};}
 function details(d){const socios=(d.socios||[]).map((s,j)=>`${j+1}. ${s.name} | ID: ${s.rpId} | Tel: ${s.phone}`).join('\n')||'Nenhum';return `**Estabelecimento:** ${d.name}\n**Tipo:** ${d.type}\n**Localização:** ${d.location}\n**Proprietário:** ${d.ownerName} | ID: ${d.ownerId} | Tel: ${d.ownerPhone}\n**Sócios:**\n${socios}`.slice(0,3500);}
@@ -61,8 +61,15 @@ async function audit(g,id,action,who,extra={}){
 async function listMenu(i,mode,page=0){const snaps=await establishments(i.guildId).orderBy('name').get();const items=snaps.docs.filter(doc=>doc.data().active!==false);const total=Math.max(1,Math.ceil(items.length/25));page=Math.max(0,Math.min(page,total-1));if(!items.length)return i.reply({content:'Ainda não há estabelecimentos cadastrados.',components:nav(),flags:EP});const opts=items.slice(page*25,(page+1)*25).map(d=>({label:clean(d.data().name,100),description:clean(`${d.data().type} • ${d.data().location}`,100),value:d.id}));const select=new StringSelectMenuBuilder().setCustomId(`vist:pick:${mode}`).setPlaceholder('Selecione um estabelecimento').addOptions(opts);const components=[new ActionRowBuilder().addComponents(select)];if(total>1)components.push(row(b(`vist:page:${mode}:${page-1}`,'Anterior').setDisabled(page===0),b(`vist:page:${mode}:${page+1}`,'Próxima').setDisabled(page>=total-1)));components.push(...nav());return i.reply({content:`Selecione o estabelecimento (${page+1}/${total}):`,components,flags:EP});}
 async function handleVistorias(i){const id=i.customId;const legal=hasAnyRole(i.member,legalRoles);const fire=hasAnyRole(i.member,fireRoles);
 if(['vist:cadastrar','vist:editar','vist:agendar','vist:excluir'].includes(id)||id.startsWith('vist:page:')||id.startsWith('vist:pick:')||id.startsWith('vist:step:')||id.startsWith('vist:form:')||id.startsWith('vist:delete:')){if(!legal)return reply(i,'Somente o Jurídico e os cargos de comando autorizados podem utilizar esta função.');}
-if(id==='vist:menu'){await i.deferUpdate();return i.editReply(privateMenu());}
-if(id==='vist:close'){await i.deferUpdate();return i.editReply({content:'Menu fechado. Para voltar, use o painel público de vistorias.',embeds:[],components:[]});}
+if(id==='vist:menu'){
+ // Nunca substitua o painel público: abra um menu privado quando a origem não for efêmera.
+ if (!i.message?.flags?.has(MessageFlags.Ephemeral)) return i.reply({...privateMenu(),flags:EP});
+ await i.deferUpdate();return i.editReply(privateMenu());
+}
+if(id==='vist:close'){
+ if (!i.message?.flags?.has(MessageFlags.Ephemeral)) return i.reply({content:'Para abrir o menu, utilize o painel público de vistorias.',flags:EP});
+ await i.deferUpdate();return i.editReply({content:'Menu fechado. Para voltar, use o painel público de vistorias.',embeds:[],components:[]});
+}
 if(id==='vist:cadastrar')return i.showModal(modal('vist:form:new:1','Cadastrar estabelecimento',[field('name','Nome do estabelecimento',TextInputStyle.Short,true,100),field('type','Tipo (boate, restaurante, etc.)',TextInputStyle.Short,true,70),field('location','Localização (Norte ou Sul)',TextInputStyle.Short,true,20),field('ownerName','Nome do proprietário',TextInputStyle.Short,true,90),field('ownerId','ID do proprietário no RP',TextInputStyle.Short,true,30)]));
 if(id==='vist:editar')return listMenu(i,'edit');
 if(id==='vist:agendar')return listMenu(i,'schedule');

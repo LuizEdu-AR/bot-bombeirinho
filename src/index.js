@@ -5,7 +5,7 @@ const { initAdministrativeLogs } = require('./services/logs-administrativos');
 const { panel, handleRegistration } = require('./services/registrations');
 require('./services/firebase');
 const { onMemberLeave, reconcileMembership } = require('./services/membership');
-const { ensurePanels } = require('./services/panels');
+const { ensurePanels, ensureCadastroVistoriaPanel } = require('./services/panels');
 const { ensureBotHelp } = require('./services/bot-help');
 const { handlePonto } = require('./services/ponto');
 const { handleFiveMLog } = require('./services/ponto-fivem');
@@ -21,6 +21,8 @@ const { registerHierarchy } = require('./services/hierarquia');
 const { handleNicks } = require('./services/padronizar-nicks');
 const { handleSuggestionMessage, handleSuggestionInteraction } = require('./services/sugestoes');
 const { handleAnalysis } = require('./services/analisar-estabelecimentos');
+const { ensurePanel: ensureAtestadosPanel, handleAtestados } = require('./services/atestados');
+const { publishPhonePanel, handlePhone } = require('./services/atualizar-telefone');
 if (!process.env.DISCORD_TOKEN) throw new Error('Defina DISCORD_TOKEN no .env');
 const client = new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildMessages,GatewayIntentBits.MessageContent]});
 registerHierarchy(client);
@@ -35,14 +37,35 @@ client.on(Events.GuildMemberUpdate, (oldMember,newMember)=>{
  onNicknameUpdate(oldMember,newMember).catch(err=>console.error('Erro ao sincronizar ID:',err));
 });
 client.on(Events.GuildMemberAdd, member => reconcileMembership(member).catch(err => console.error('Erro ao verificar reentrada:', err)));
+// Restaura o painel caso sua mensagem seja apagada enquanto o bot está online.
+let cadastroRepairTimer = null;
+let cadastroRepairRunning = false;
+async function repairCadastroPanel() {
+ if (cadastroRepairRunning || !client.isReady()) return;
+ cadastroRepairRunning = true;
+ try {
+  for (const guild of client.guilds.cache.values()) {
+   await ensureCadastroVistoriaPanel(guild).catch(err => console.error('[Vistorias] Falha ao recuperar painel:', err));
+  }
+ } finally { cadastroRepairRunning = false; }
+}
+client.on(Events.MessageDelete, message => {
+ if (message.channelId !== channels.cadastrarVistoria) return;
+ // Revalida o ID salvo no Firestore antes de publicar qualquer nova mensagem.
+ setTimeout(() => repairCadastroPanel().catch(console.error), 1500);
+});
 client.once(Events.ClientReady, async c => {
  console.log(`🚒 Bombeirinho online como ${c.user.tag}`);
  await ensurePanels(c);
+ // Verificação leve a cada 10 minutos; também cobre exclusões fora do cache do Discord.
+ if (!cadastroRepairTimer) cadastroRepairTimer = setInterval(() => repairCadastroPanel().catch(console.error), 10 * 60 * 1000);
+ await ensureAtestadosPanel(c);
  await ensureBotHelp(c).catch(err => console.error('[Bot Help] Erro:', err));
 });
 client.on(Events.InteractionCreate,async interaction=>{
  try {
   if (interaction.isChatInputCommand()) {
+   if (interaction.commandName==='painel-telefone') return await publishPhonePanel(interaction);
    if (interaction.commandName==='analisar-estabelecimentos') return await handleAnalysis(interaction);
    if (interaction.commandName==='sincronizar-cursos') return await handleSyncCourses(interaction);
    if (interaction.commandName==='cadastrar-bombeiro') return await handleManualRegistration(interaction);
@@ -59,6 +82,8 @@ client.on(Events.InteractionCreate,async interaction=>{
    }
   }
   if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu() || interaction.isModalSubmit()) {
+   if (interaction.customId.startsWith('telefone:')) return await handlePhone(interaction);
+   if (interaction.customId.startsWith('atest:')) return await handleAtestados(interaction);
    if (interaction.customId.startsWith('sug:')) return await handleSuggestionInteraction(interaction);
    if (interaction.customId.startsWith('ids:')) return await handleSyncIds(interaction);
    if (interaction.customId.startsWith('nicks:')) return await handleNicks(interaction);
