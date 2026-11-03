@@ -6,7 +6,7 @@ const { roles } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
 
 const COMMAND = [roles.tenente, roles.capitao, roles.chefeBatalhao, roles.chefeAdjunto, roles.chefe];
-const RESET_ROLES = [roles.chefe, roles.chefeAdjunto];
+const RESET_ROLES = [roles.chefeBatalhao, roles.chefe, roles.chefeAdjunto];
 const privateReply = content => ({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
 const guildRef = guildId => db.collection('guilds').doc(guildId);
 const pointsRef = guildId => guildRef(guildId).collection('pontos');
@@ -67,12 +67,13 @@ const worked = d => d.workedMs ?? Math.max(0, (d.closedAtMs || Date.now()) - d.s
 function panel() {
   return {
     embeds: [new EmbedBuilder().setColor(0xc62828).setTitle('🚒 SSFD • Controle de Ponto')
-      .setDescription('Painel administrativo de consulta dos expedientes.\n\n**Pontos abertos:** expedientes ativos e pausados.\n**Consultar bombeiro:** histórico total de horas trabalhadas.\n**Ranking:** horas contabilizadas no período atual.\n**Resetar ranking:** inicia um novo período sem apagar o histórico.')],
+      .setDescription('Painel administrativo de consulta dos expedientes.\n\n**Pontos abertos:** expedientes ativos e pausados.\n**Consultar bombeiro:** histórico total de horas trabalhadas.\n**Ranking:** horas contabilizadas no período atual.\n**Resetar ranking:** inicia um novo período sem apagar o histórico.\n**Verificar ausências:** consulta o último expediente de cada bombeiro.')],
     components: [new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('controle:abertos').setLabel('Pontos abertos').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('controle:consultar').setLabel('Consultar bombeiro').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('controle:ranking').setLabel('Ranking').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('controle:reset').setLabel('Resetar ranking').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('controle:reset').setLabel('Resetar ranking').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('controle:ausencias').setLabel('Verificar ausências').setStyle(ButtonStyle.Secondary)
     )]
   };
 }
@@ -124,13 +125,13 @@ async function handleControle(interaction) {
   if (!interaction.inGuild()) return interaction.reply(privateReply('Disponível apenas no servidor.'));
   const id = interaction.customId;
   if (!id?.startsWith('controle:')) return;
-  const supported = ['controle:abertos', 'controle:consultar', 'controle:ranking', 'controle:selecionar:consultar', 'controle:reset', 'controle:reset:confirmar', 'controle:reset:cancelar'];
+  const supported = ['controle:abertos', 'controle:consultar', 'controle:ranking', 'controle:selecionar:consultar', 'controle:reset', 'controle:reset:confirmar', 'controle:reset:cancelar', 'controle:ausencias'];
   const exportMatch = /^controle:ranking:exportar:([a-f0-9]{16})$/.exec(id);
   if (!supported.includes(id) && !exportMatch) return interaction.reply(privateReply('Esta ação foi removida do Controle de Ponto.'));
   const member = await memberFor(interaction);
   if (!member || !hasAnyRole(member, COMMAND)) return interaction.reply(privateReply('Você não possui permissão para esta ação.'));
   const canReset = hasAnyRole(member, RESET_ROLES);
-  if (id.startsWith('controle:reset') && !canReset) return interaction.reply(privateReply('Somente Chefe, Chefe Adjunto ou Manutenção podem resetar o ranking.'));
+  if (id.startsWith('controle:reset') && !canReset) return interaction.reply(privateReply('Somente Chefe de Batalhão, Chefe Adjunto, Chefe ou Manutenção podem resetar o ranking.'));
 
   if (exportMatch) {
     const view = rankingViews.get(exportMatch[1]);
@@ -142,6 +143,35 @@ async function handleControle(interaction) {
     }
     const file = new AttachmentBuilder(rankingCsv(view), { name: 'ranking-horas-ssfd.csv' });
     return interaction.reply({ content: 'Ranking completo em CSV:', files: [file], flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+  }
+  if (id === 'controle:ausencias') {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const members = await interaction.guild.members.fetch();
+    const eligible = [...members.values()].filter(m => !m.user.bot && m.roles.cache.has(roles.bombeiros) &&
+      [roles.cadete,roles.bombeiroI,roles.bombeiroII,roles.bombeiroIII,roles.tenente,roles.capitao,roles.chefeBatalhao,roles.chefeAdjunto,roles.chefe].some(r => m.roles.cache.has(r)));
+    const points = await pointsRef(interaction.guildId).get();
+    const byId = new Map(points.docs.map(doc => [doc.id, doc]));
+    const now = Date.now();
+    const entries = await Promise.all(eligible.map(async m => {
+      const point = byId.get(m.id);
+      if (!point) return { id:m.id, ms:null, active:false };
+      const data = point.data();
+      if (['open','paused'].includes(data.status)) return { id:m.id, ms:0, active:true };
+      const sessions = await point.ref.collection('sessions').orderBy('closedAtMs','desc').limit(1).get();
+      const last = Number(sessions.docs[0]?.data()?.closedAtMs || data.closedAtMs || 0);
+      return { id:m.id, ms:last>0 ? Math.max(0,now-last) : null, active:false };
+    }));
+    entries.sort((a,b) => (b.ms ?? Infinity)-(a.ms ?? Infinity));
+    const lines = entries.map((e,i) => {
+      const minutes = Math.floor((e.ms || 0)/60000), days=Math.floor(minutes/1440), hours=Math.floor(minutes%1440/60);
+      const status = e.active ? 'Em expediente' : e.ms===null ? 'Sem ponto registrado' : `${days} dia(s) e ${hours} hora(s)`;
+      return `${i+1}. <@${e.id}> — **${status}**`;
+    });
+    const pages=[]; let page='';
+    for(const line of lines){if(page.length+line.length+1>3800){pages.push(page);page='';}page+=line+'\n';}
+    if(page||!pages.length)pages.push(page||'Nenhum bombeiro elegível encontrado.');
+    const embeds=pages.slice(0,10).map((description,i)=>new EmbedBuilder().setColor(0xc62828).setTitle('SSFD • Verificação de Ausências').setDescription(description).setFooter({text:`Página ${i+1}/${pages.length} • ${eligible.length} integrante(s)`}));
+    return interaction.editReply({ embeds, content:pages.length>10?'Lista excede o limite de exibição de 10 páginas.':'', allowedMentions:{parse:[]} });
   }
   if (id === 'controle:consultar') {
     return interaction.reply({ content: '**Consultar bombeiro**\nSelecione um membro para visualizar suas horas totais.', flags: MessageFlags.Ephemeral,

@@ -17,6 +17,7 @@ const {handleSyncIds,onNicknameUpdate}=require('./services/sincronizar-ids');
 const {handleSyncCourses}=require('./services/sincronizar-cursos');
 const {handleManualRegistration}=require('./services/cadastrar-bombeiro');
 const { handleGestao } = require('./services/gestao-cargos');
+const { handleTeams } = require('./services/gestao-equipes');
 const { registerHierarchy } = require('./services/hierarquia');
 const { handleNicks } = require('./services/padronizar-nicks');
 const { handleSuggestionMessage, handleSuggestionInteraction } = require('./services/sugestoes');
@@ -87,6 +88,7 @@ client.on(Events.InteractionCreate,async interaction=>{
    if (interaction.customId.startsWith('sug:')) return await handleSuggestionInteraction(interaction);
    if (interaction.customId.startsWith('ids:')) return await handleSyncIds(interaction);
    if (interaction.customId.startsWith('nicks:')) return await handleNicks(interaction);
+   if (interaction.customId.startsWith('equipes:')) return await handleTeams(interaction);
    if (interaction.customId.startsWith('gest:')) return await handleGestao(interaction);
    if (interaction.customId.startsWith('sync:')) return interaction.reply({content:'O painel antigo de importação foi desativado.',flags:MessageFlags.Ephemeral});
    if (interaction.customId.startsWith('vist:')) return await handleVistorias(interaction);

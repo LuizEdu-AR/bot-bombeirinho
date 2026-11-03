@@ -4,7 +4,15 @@ const {hasAnyRole}=require('../utils/permissions');
 const {db,admin}=require('./firebase');
 const {saveSnapshot}=require('./sync-members');
 const {administrativeLog}=require('./logs-administrativos');
-const admins=[roles.chefe,roles.chefeAdjunto];
+const admins=[roles.chefeBatalhao,roles.chefeAdjunto,roles.chefe];
+const commandRoles=[roles.tenente,roles.capitao,...admins];
+const captainRoles=[roles.capitao,...admins];
+const { reconcileTeamRank } = require('./gestao-equipes');
+function requiredRoles(id) {
+ if (/^gest:(course|coursepick|grantselect:|revokeselect:|multiusers|choosecourse:|courseusers:|schedule|schedulemodal|schedulecourses|scheduleinstructor|schedulepublish|schedulecancel)/.test(id)) return commandRoles;
+ if (/^gest:user:course/.test(id)) return commandRoles;
+ return captainRoles;
+}
 const ANNOUNCEMENTS_CHANNEL='1560354767740346438';
 const CERTIFICATES_CHANNEL='1439957901803520121';
 const EXONERATION_CHANNEL=channels.exoneracao;
@@ -38,8 +46,9 @@ const back=()=>new ActionRowBuilder().addComponents(new ButtonBuilder().setCusto
 async function memberFor(interaction,id){return interaction.guild.members.fetch(id).catch(()=>null);}
 async function log(interaction,userId,type,details){await events(interaction.guildId,userId).add({type,by:interaction.user.id,details,at:admin.firestore.FieldValue.serverTimestamp()});await administrativeLog(interaction.guildId,type,{actorId:interaction.user.id,targetId:userId,details});}
 async function handleGestao(interaction){
- if(!hasAnyRole(interaction.member,admins))return interaction.reply({content:'Apenas Chefe, Chefe Adjunto ou Manutenção podem usar Gestão de Cargos.',...ephemeral});
  const id=interaction.customId;
+ const actor=await interaction.guild.members.fetch({user:interaction.user.id,force:true}).catch(()=>null);
+ if(!hasAnyRole(actor,requiredRoles(id)))return interaction.reply({content:'Você não possui permissão para esta ação da Gestão de Cargos.',...ephemeral});
  if(id==='gest:home')return interaction.update({content:'Escolha uma ação no painel principal.',components:[],embeds:[]});
  if(id==='gest:confirmrestore:'+id.split(':')[2]&&id.startsWith('gest:confirmrestore:')&&interaction.isButton()){
   const target=id.split(':')[2],key=dismissalKey(interaction),draft=restorationDrafts.get(key);
@@ -156,6 +165,7 @@ async function handleGestao(interaction){
    await reg(interaction.guildId,target).set({patentes:[rank],updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
    await log(interaction,target,'manual_rank_change',{previous,newRank:rank});
   }catch(err){console.error('[Gestão] Registrar mudança de patente:',err);return interaction.editReply({content:'Patente alterada no Discord, mas houve falha ao registrar no Firebase. Confira o log antes de repetir.',components:[]});}
+  await reconcileTeamRank(interaction.guild,target,rank,interaction.user.id).catch(err=>console.error('[Equipes] Sincronização após promoção:',err));
   return interaction.editReply({content:`Patente de <@${target}> atualizada para **${rankOptions.find(r=>r.value===rank).label}**.`,components:[],allowedMentions:{parse:[]}});
  }
  if(id==='gest:cancel'){restorationDrafts.delete(dismissalKey(interaction));dismissalDrafts.delete(dismissalKey(interaction));return interaction.update({content:'Ação cancelada. Nenhum dado foi alterado.',components:[]});}
@@ -320,6 +330,7 @@ async function handleGestao(interaction){
   let announceWarning='';
   try{await ch.send({content:`<@${target}>`,embeds:[embed],allowedMentions:{parse:[],users:[target]}});}
   catch(err){console.error('[Gestão] Publicação exoneração:',err);announceWarning='\n⚠️ Cargos removidos, mas não foi possível publicar no canal de Exoneração.';}
+  await reconcileTeamRank(interaction.guild,target,'dismissed',interaction.user.id).catch(err=>console.error('[Equipes] Sincronização após exoneração:',err));
   return interaction.editReply({content:`Exoneração de <@${target}> processada.${storageWarning}${announceWarning}`,components:[],allowedMentions:{parse:[]}});
  }
  return interaction.reply({content:'Ação de Gestão de Cargos desconhecida.',...ephemeral});

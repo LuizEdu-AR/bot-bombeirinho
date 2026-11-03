@@ -4,6 +4,7 @@ const { panel } = require('./registrations');
 const { panel: controlPanel } = require('./controle-ponto');
 const { cadastroPanel, agendaPanel } = require('./vistorias');
 const { panel: gestaoPanel } = require('./gestao-cargos');
+const { ensureTeamPanels } = require('./gestao-equipes');
 
 const PANEL_KEY = 'setagem';
 const PANEL_TITLE = '🚒 SSFD • Setagem';
@@ -99,7 +100,7 @@ async function ensurePanels(client) {
     try { await ensureSetagemPanel(guild); await ensureControlePanel(guild);
       await ensureVistoriaPanel(guild,'cadastrarVistoria',channels.cadastrarVistoria,'🚒 SSFD • Cadastrar Vistoria',cadastroPanel);
       await ensureVistoriaPanel(guild,'agendamentoVistoria',channels.agendamentoVistoria,'🚒 SSFD • Agendamento de Vistorias',agendaPanel);
-      await ensureGestaoPanel(guild); }
+      await ensureGestaoPanel(guild); await ensureTeamPanels(guild); }
     catch (error) { console.error(`[Painéis] Erro no servidor ${guild.id}:`, error); }
   }
 }
