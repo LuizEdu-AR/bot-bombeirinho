@@ -1,3 +1,4 @@
+const { administrativePanel } = require('./panel-components-v2');
 const {ActionRowBuilder,ButtonBuilder,ButtonStyle,EmbedBuilder,UserSelectMenuBuilder,StringSelectMenuBuilder,ModalBuilder,TextInputBuilder,TextInputStyle,MessageFlags}=require('discord.js');
 const {roles,courses,channels}=require('../config/ids');
 const {hasAnyRole}=require('../utils/permissions');
@@ -40,7 +41,14 @@ const ephemeral={flags:MessageFlags.Ephemeral};
 const reg=(g,u)=>db.collection('guilds').doc(g).collection('registrations').doc(u);
 const events=(g,u)=>reg(g,u).collection('managementEvents');
 const clean=s=>s.trim().replace(/[\r\n<>@]/g,'').slice(0,80);
-function panel(){return {embeds:[new EmbedBuilder().setColor(0xd92929).setTitle('🚒 SSFD • Gestão de Cargos').setDescription('Gerencie cadastros e cursos dos bombeiros. Alterações são registradas no Firebase. A concessão de qualquer curso reconhecido promove automaticamente Bombeiro I para Bombeiro II.')],components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('gest:edit').setLabel('Editar usuário').setStyle(ButtonStyle.Primary),new ButtonBuilder().setCustomId('gest:course').setLabel('Atribuir / remover curso').setStyle(ButtonStyle.Success),new ButtonBuilder().setCustomId('gest:schedule').setLabel('Cadastrar curso').setStyle(ButtonStyle.Primary),new ButtonBuilder().setCustomId('gest:dismiss').setLabel('Exonerar usuário').setStyle(ButtonStyle.Danger),new ButtonBuilder().setCustomId('gest:restore').setLabel('Restaurar Cursos').setStyle(ButtonStyle.Secondary))]};}
+function panel() { return administrativePanel('🚒 SSFD • Gestão de Cargos',
+  'Gerencie cadastros e cursos dos bombeiros. Alterações são registradas no Firebase. A concessão de qualquer curso reconhecido promove automaticamente Bombeiro I para Bombeiro II.', [
+    { id:'gest:edit', label:'Editar usuário', description:'Atualize o cadastro e a patente de um bombeiro.', style:ButtonStyle.Primary },
+    { id:'gest:course', label:'Atribuir / remover curso', description:'Gerencie os cursos reconhecidos de um bombeiro.', style:ButtonStyle.Success },
+    { id:'gest:schedule', label:'Cadastrar curso', description:'Cadastre cursos e suas informações.', style:ButtonStyle.Primary },
+    { id:'gest:dismiss', label:'Exonerar usuário', description:'Exonere um integrante mediante confirmação.', style:ButtonStyle.Danger },
+    { id:'gest:restore', label:'Restaurar Cursos', description:'Restaure os cursos de um integrante.', style:ButtonStyle.Secondary }
+  ]); }
 const selectUser=(action)=>new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId(`gest:user:${action}`).setPlaceholder('Selecione um membro do servidor').setMinValues(1).setMaxValues(1));
 const back=()=>new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('gest:home').setLabel('Voltar').setStyle(ButtonStyle.Secondary));
 async function memberFor(interaction,id){return interaction.guild.members.fetch(id).catch(()=>null);}

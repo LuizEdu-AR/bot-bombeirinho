@@ -116,6 +116,31 @@ async function updatePublicMessage(guild,userId,d,sourceMessage) {
  const msg=sourceMessage?.id===d.messageId && sourceMessage.channelId===ch.id ? sourceMessage : await ch.messages.fetch(d.messageId);
  await msg.edit(display(d,userId));
 }
+function alertDmPayload(guildId, userId, d) {
+ const pointUrl = `https://discord.com/channels/${guildId}/${d.channelId || channels.baterPonto}/${d.messageId}`;
+ const embed = new EmbedBuilder()
+  .setColor(0xd92929)
+  .setTitle('⚠️ Aviso de Ponto Aberto')
+  .setDescription([
+   'Prezado(a) bombeiro(a),',
+   '',
+   'Identificamos que seu ponto no **South State Fire Department** permanece aberto.',
+   '',
+   'Solicitamos que verifique sua situação e, caso tenha encerrado suas atividades, finalize seu expediente pelo painel de controle de ponto.',
+   '',
+   'Caso ainda esteja em serviço, você poderá continuar normalmente.',
+   '',
+   'Atenciosamente,',
+   '**South State Fire Department • Administração**',
+   '',
+   `[**Acessar meu ponto no Discord**](${pointUrl})`
+  ].join('\n'))
+  .setFooter({text:'Bombeirinho • South State Fire Department'})
+  .setTimestamp();
+ return {embeds:[embed], components:[new ActionRowBuilder().addComponents(
+  new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Acessar meu ponto').setURL(pointUrl)
+ )]};
+}
 async function handlePonto(interaction) {
  if(!interaction.inGuild()) return interaction.reply({content:'Use este recurso no servidor SSFD.',flags:ephemeral});
  if(interaction.isChatInputCommand()) {
@@ -175,7 +200,7 @@ async function handlePonto(interaction) {
   if(d.status==='closed'){error='Este ponto já foi encerrado.';return;}
   if(action==='alert') {
    if(d.lastAlertAtMs && t-d.lastAlertAtMs<ALERT_COOLDOWN_MS){error='Este ponto já recebeu um alerta recentemente. Aguarde 15 minutos.';return;}
-   updated={...d,lastAlertAtMs:t};
+   updated={...d,previousAlertAtMs:d.lastAlertAtMs || null,lastAlertAtMs:t};
    tx.update(ref,{lastAlertAtMs:t});
    tx.set(ref.collection('sessions').doc(sessionId),{lastAlertAtMs:t},{merge:true});
   } else {
@@ -199,9 +224,25 @@ async function handlePonto(interaction) {
  if(error) return interaction.followUp({content:error,flags:ephemeral});
  if(action==='alert') {
   try {
-   await interaction.channel.send({content:`<@${userId}>, seu ponto continua aberto. Alerta enviado por <@${interaction.user.id}>.`,allowedMentions:{users:[userId]}});
-   return;
-  } catch(e) {console.error('[Ponto] Erro ao enviar alerta:',e);return interaction.followUp({content:'Alerta registrado, mas não foi possível publicar a notificação.',flags:ephemeral});}
+   const recipient = await interaction.client.users.fetch(userId);
+   await recipient.send(alertDmPayload(interaction.guildId, userId, updated));
+   return interaction.followUp({content:`Aviso enviado por mensagem privada para <@${userId}>, com o link direto para o ponto.`,allowedMentions:{parse:[]},flags:ephemeral});
+  } catch(e) {
+   console.error('[Ponto] Não foi possível enviar a mensagem privada:',e);
+   // Não bloqueia novas tentativas por 15 minutos se a DM não foi entregue.
+   try {
+    await db.runTransaction(async tx => {
+     const snap = await tx.get(ref);
+     if(!snap.exists) return;
+     const current = snap.data();
+     if(current.sessionId !== sessionId || current.lastAlertAtMs !== updated.lastAlertAtMs) return;
+     const previous = updated.lastAlertAtMs === current.lastAlertAtMs ? (updated.previousAlertAtMs || null) : null;
+     tx.update(ref,{lastAlertAtMs:previous});
+     tx.set(ref.collection('sessions').doc(sessionId),{lastAlertAtMs:previous},{merge:true});
+    });
+   } catch(rollbackError) {console.error('[Ponto] Falha ao liberar nova tentativa de alerta:',rollbackError);}
+   return interaction.followUp({content:'Não foi possível enviar o aviso por mensagem privada. O bombeiro pode estar com as DMs bloqueadas ou indisponíveis. Nenhuma mensagem foi publicada no canal.',flags:ephemeral});
+  }
  }
  try {
   await updatePublicMessage(interaction.guild,userId,updated,interaction.message);

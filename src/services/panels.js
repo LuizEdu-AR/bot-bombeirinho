@@ -1,3 +1,4 @@
+const { hasPanelTitle } = require('./panel-components-v2');
 const { db, admin } = require('./firebase');
 const { channels } = require('../config/ids');
 const { panel } = require('./registrations');
@@ -52,11 +53,11 @@ async function ensureControlePanel(guild) {
  let message = null;
  if (snap.exists && snap.data()?.channelId === channel.id && snap.data()?.messageId) {
   message = await channel.messages.fetch(snap.data().messageId).catch(() => null);
-  if (message?.author?.id !== guild.client.user.id || !message.embeds?.some(e=>e.title==='🚒 SSFD • Controle de Ponto')) message=null;
+  if (message?.author?.id !== guild.client.user.id || !hasPanelTitle(message,'🚒 SSFD • Controle de Ponto')) message=null;
  }
  if (!message) {
   const recent=await channel.messages.fetch({limit:100});
-  message=recent.find(m=>m.author?.id===guild.client.user.id && m.embeds?.some(e=>e.title==='🚒 SSFD • Controle de Ponto'))||null;
+  message=recent.find(m=>m.author?.id===guild.client.user.id && hasPanelTitle(m,'🚒 SSFD • Controle de Ponto'))||null;
  }
  if (message) await message.edit(controlPanel());
  else message=await channel.send(controlPanel());
@@ -70,9 +71,9 @@ async function ensureVistoriaPanel(guild, key, channelId, title, content) {
  const snap = await ref.get(); let message=null;
  if (snap.exists && snap.data()?.messageId && snap.data()?.channelId===channel.id) {
   message=await channel.messages.fetch(snap.data().messageId).catch(()=>null);
-  if (message?.author?.id!==guild.client.user.id || !message.embeds?.some(e=>e.title===title)) message=null;
+  if (message?.author?.id!==guild.client.user.id || !hasPanelTitle(message,title)) message=null;
  }
- if (!message) {const recent=await channel.messages.fetch({limit:100});message=recent.find(m=>m.author?.id===guild.client.user.id&&m.embeds?.some(e=>e.title===title))||null;}
+ if (!message) {const recent=await channel.messages.fetch({limit:100});message=recent.find(m=>m.author?.id===guild.client.user.id&&hasPanelTitle(m,title))||null;}
  if (message) await message.edit(content()); else message=await channel.send(content());
  await ref.set({channelId:channel.id,messageId:message.id,updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
  console.log(`[Painéis] ${key} verificado em ${guild.name}: ${message.id}`);
@@ -83,8 +84,8 @@ async function ensureGestaoPanel(guild){
  const ref=db.collection('guilds').doc(guild.id).collection('panels').doc('gestaoCargos');
  const snap=await ref.get();let message=null;
  if(snap.exists&&snap.data()?.channelId===channel.id&&snap.data()?.messageId)message=await channel.messages.fetch(snap.data().messageId).catch(()=>null);
- if(message?.author?.id!==guild.client.user.id||!message?.embeds?.some(e=>e.title==='🚒 SSFD • Gestão de Cargos'))message=null;
- if(!message){const recent=await channel.messages.fetch({limit:100});message=recent.find(m=>m.author?.id===guild.client.user.id&&m.embeds?.some(e=>e.title==='🚒 SSFD • Gestão de Cargos'))||null;}
+ if(message?.author?.id!==guild.client.user.id||!hasPanelTitle(message,'🚒 SSFD • Gestão de Cargos'))message=null;
+ if(!message){const recent=await channel.messages.fetch({limit:100});message=recent.find(m=>m.author?.id===guild.client.user.id&&hasPanelTitle(m,'🚒 SSFD • Gestão de Cargos'))||null;}
  if(message)await message.edit(gestaoPanel());else message=await channel.send(gestaoPanel());
  await ref.set({channelId:channel.id,messageId:message.id,updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});
  // Remover o painel antigo de importação, sem excluir os registros do Firebase.

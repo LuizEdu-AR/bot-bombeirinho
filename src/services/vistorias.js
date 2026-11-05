@@ -1,3 +1,4 @@
+const { administrativePanel } = require('./panel-components-v2');
 const {administrativeLog}=require('./logs-administrativos');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
 const { db, admin } = require('./firebase');
@@ -21,13 +22,19 @@ const e=(title,desc)=>new EmbedBuilder().setColor(0xd92929).setTitle(title).setD
 const reply=(i,content)=>i.reply({content,flags:EP});
 // A private navigation bar keeps the next operation accessible without scrolling.
 const nav=()=>[row(b('vist:menu','Voltar ao menu',ButtonStyle.Primary),b('vist:close','Fechar'))];
-const privateMenu=()=>({content:'**🚒 SSFD • Gerenciamento de Vistorias**\nEscolha uma operação:',embeds:[],components:[row(b('vist:agendar','Agendar Vistoria',ButtonStyle.Primary),b('vist:cadastrar','Cadastrar Vistoria',ButtonStyle.Success),b('vist:editar','Editar Estabelecimento')),row(b('vist:excluir','Excluir Estabelecimento',ButtonStyle.Danger),b('vist:close','Fechar'))]});
+const privateMenu=()=>({content:'**🚒 SSFD • Gerenciamento de Vistorias**\nEscolha uma operação:',embeds:[],components:[row(b('vist:agendar','Agendar Vistoria',ButtonStyle.Primary),b('vist:cadastrar','Cadastrar Estabelecimento',ButtonStyle.Success),b('vist:editar','Editar Estabelecimento')),row(b('vist:excluir','Excluir Estabelecimento',ButtonStyle.Danger),b('vist:close','Fechar'))]});
 // Discord modals sometimes carry their originating message, sometimes not.
 // Update it when possible; otherwise create the mandatory ephemeral modal response.
 async function modalAck(i){if(i.message){await i.deferUpdate();return true;}await i.deferReply({flags:EP});return false;}
 const privateEdit=(i,content,components=nav())=>i.editReply({content,embeds:[],components});
 
-function cadastroPanel(){return {embeds:[e('🚒 SSFD • Cadastrar Vistoria','**Agendar Vistoria:** encaminha um estabelecimento cadastrado para a equipe de bombeiros.\n**Cadastrar Vistoria:** registra estabelecimento, proprietário e sócios.\n**Editar Estabelecimento:** atualiza os dados de um estabelecimento.\n**Excluir Estabelecimento:** desativa o cadastro sem apagar o histórico.')],components:[row(b('vist:agendar','Agendar Vistoria',ButtonStyle.Primary),b('vist:cadastrar','Cadastrar Vistoria',ButtonStyle.Success),b('vist:editar','Editar Estabelecimento')),row(b('vist:excluir','Excluir Estabelecimento',ButtonStyle.Danger))]};}
+function cadastroPanel() { return administrativePanel('🚒 SSFD • Cadastrar Vistoria',
+  'Gerencie os estabelecimentos e agendamentos de vistoria.', [
+    { id:'vist:agendar', label:'Agendar Vistoria', description:'Encaminhe um estabelecimento cadastrado para a equipe de bombeiros.', style:ButtonStyle.Primary },
+    { id:'vist:cadastrar', label:'Cadastrar Estabelecimento', description:'Registre estabelecimento, proprietário e sócios.', style:ButtonStyle.Success },
+    { id:'vist:editar', label:'Editar Estabelecimento', description:'Atualize os dados de um estabelecimento.', style:ButtonStyle.Secondary },
+    { id:'vist:excluir', label:'Excluir Estabelecimento', description:'Desative o cadastro sem apagar o histórico.', style:ButtonStyle.Danger }
+  ]); }
 function agendaPanel(){return {embeds:[e('🚒 SSFD • Agendamento de Vistorias','Os agendamentos do Jurídico serão publicados neste canal. Utilize os botões de cada vistoria para registrar contato, cancelar ou concluir.')],components:[]};}
 async function actor(g,u){const s=await guildRef(g).collection('registrations').doc(u.id).get();const d=s.data()||{};return {discordId:u.id,name:clean(d.name||u.displayName||u.username,80),rpId:clean(d.rpId||'Não cadastrado',30),phone:clean(d.phone||'Não cadastrado',40)};}
 function details(d){const socios=(d.socios||[]).map((s,j)=>`${j+1}. ${s.name} | ID: ${s.rpId} | Tel: ${s.phone}`).join('\n')||'Nenhum';return `**Estabelecimento:** ${d.name}\n**Tipo:** ${d.type}\n**Localização:** ${d.location}\n**Proprietário:** ${d.ownerName} | ID: ${d.ownerId} | Tel: ${d.ownerPhone}\n**Sócios:**\n${socios}`.slice(0,3500);}

@@ -1,3 +1,4 @@
+const { administrativePanel } = require('./panel-components-v2');
 const {administrativeLog}=require('./logs-administrativos');
 const { randomBytes } = require('node:crypto');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, UserSelectMenuBuilder, MessageFlags, AttachmentBuilder } = require('discord.js');
@@ -64,19 +65,14 @@ function rankingCsv(view) {
 const timestampMs = value => typeof value?.toMillis === 'function' ? value.toMillis() : null;
 const worked = d => d.workedMs ?? Math.max(0, (d.closedAtMs || Date.now()) - d.startedAtMs - (d.pausedMs || 0) - (d.status === 'paused' ? Date.now() - (d.pauseStartedMs || Date.now()) : 0));
 
-function panel() {
-  return {
-    embeds: [new EmbedBuilder().setColor(0xc62828).setTitle('🚒 SSFD • Controle de Ponto')
-      .setDescription('Painel administrativo de consulta dos expedientes.\n\n**Pontos abertos:** expedientes ativos e pausados.\n**Consultar bombeiro:** histórico total de horas trabalhadas.\n**Ranking:** horas contabilizadas no período atual.\n**Resetar ranking:** inicia um novo período sem apagar o histórico.\n**Verificar ausências:** consulta o último expediente de cada bombeiro.')],
-    components: [new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('controle:abertos').setLabel('Pontos abertos').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('controle:consultar').setLabel('Consultar bombeiro').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('controle:ranking').setLabel('Ranking').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('controle:reset').setLabel('Resetar ranking').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('controle:ausencias').setLabel('Verificar ausências').setStyle(ButtonStyle.Secondary)
-    )]
-  };
-}
+function panel() { return administrativePanel('🚒 SSFD • Controle de Ponto',
+  'Painel administrativo de consulta dos expedientes.', [
+    { id:'controle:abertos', label:'Pontos abertos', description:'Consulte os expedientes ativos e pausados.', style:ButtonStyle.Primary },
+    { id:'controle:consultar', label:'Consultar bombeiro', description:'Consulte o histórico total de horas trabalhadas.', style:ButtonStyle.Secondary },
+    { id:'controle:ranking', label:'Ranking', description:'Veja as horas contabilizadas no período atual.', style:ButtonStyle.Secondary },
+    { id:'controle:reset', label:'Resetar ranking', description:'Inicie um novo período sem apagar o histórico.', style:ButtonStyle.Danger },
+    { id:'controle:ausencias', label:'Verificar ausências', description:'Consulte o último expediente de cada bombeiro.', style:ButtonStyle.Secondary }
+  ]); }
 
 async function memberFor(interaction) {
   return interaction.guild.members.fetch({ user: interaction.user.id, force: true }).catch(() => null);

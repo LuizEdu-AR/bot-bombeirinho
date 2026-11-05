@@ -1,3 +1,4 @@
+const { administrativePanel } = require('./panel-components-v2');
 const {ActionRowBuilder,ButtonBuilder,ButtonStyle,EmbedBuilder,UserSelectMenuBuilder,StringSelectMenuBuilder,MessageFlags}=require('discord.js');
 const {db,admin}=require('./firebase');
 const {roles,channels,teamRoles}=require('../config/ids');
@@ -13,13 +14,19 @@ const rank=m=>m.roles.cache.has(roles.capitao)?'captain':m.roles.cache.has(roles
 const name=m=>(m.displayName||m.user.username).replace(/^\w+\s*\|\s*/,'').slice(0,65);
 const captaInRoles=m=>captainIds.filter(id=>m.roles.cache.has(id));
 const cleanName=m=>name(m).replace(/[^\p{L}\p{N} _-]/gu,'').trim().slice(0,65)||m.id;
-function panel(){return {embeds:[new EmbedBuilder().setColor(0xc62828).setTitle('SSFD • Gestão de Equipes').setDescription('Gerencie capitães, tenentes e bombeiros. As tags são sincronizadas e o painel público é atualizado automaticamente.')],components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('equipes:captain').setLabel('Criar / designar capitão').setStyle(ButtonStyle.Primary),new ButtonBuilder().setCustomId('equipes:lieutenant').setLabel('Designar tenente').setStyle(ButtonStyle.Primary),new ButtonBuilder().setCustomId('equipes:firefighter').setLabel('Gerenciar equipe').setStyle(ButtonStyle.Success),new ButtonBuilder().setCustomId('equipes:remove').setLabel('Remover vínculo').setStyle(ButtonStyle.Danger),new ButtonBuilder().setCustomId('equipes:import').setLabel('Importar tags atuais').setStyle(ButtonStyle.Secondary))]};}
+function panel() { return administrativePanel('SSFD • Gestão de Equipes',
+  'Gerencie capitães, tenentes e bombeiros. As tags são sincronizadas e o painel público é atualizado automaticamente.', [
+    { id:'equipes:captain', label:'Criar / designar capitão', description:'Cadastre ou designe um capitão para uma equipe.', style:ButtonStyle.Primary },
+    { id:'equipes:lieutenant', label:'Designar tenente', description:'Vincule um tenente a um capitão.', style:ButtonStyle.Primary },
+    { id:'equipes:firefighter', label:'Gerenciar equipe', description:'Adicione ou transfira bombeiros entre tenentes.', style:ButtonStyle.Success },
+    { id:'equipes:remove', label:'Remover vínculo', description:'Desvincule um integrante da equipe.', style:ButtonStyle.Danger }
+  ]); }
 async function ensureMessage(guild,channelId,docId,content,title){
  const channel=await guild.channels.fetch(channelId);if(!channel?.messages?.fetch)throw Error(`Canal ${channelId} inacessível`);
  const ref=db.collection('guilds').doc(guild.id).collection('panels').doc(docId);const snap=await ref.get();
  let message=snap.data()?.channelId===channel.id&&snap.data()?.messageId?await channel.messages.fetch(snap.data().messageId).catch(()=>null):null;
  if(message?.author?.id!==guild.client.user.id)message=null;
- if(!message){const recent=await channel.messages.fetch({limit:100});message=recent.find(m=>m.author.id===guild.client.user.id&&m.embeds.some(e=>e.title===title))||null;}
+ if(!message){const recent=await channel.messages.fetch({limit:100});message=recent.find(m=>m.author.id===guild.client.user.id&&require('./panel-components-v2').hasPanelTitle(m,title))||null;}
  if(message)await message.edit(content);else message=await channel.send(content);
  await ref.set({channelId,messageId:message.id,updatedAt:admin.firestore.FieldValue.serverTimestamp()},{merge:true});return message;
 }
@@ -32,7 +39,7 @@ async function publishTeams(guild){
  for(const cap of captains){
   const lts=teams.filter(t=>t.kind==='lieutenant'&&t.parentId===cap.id&&t.active!==false);
   const lines=[];
-  for(const lt of lts){lines.push(`**Tenente:** <@${lt.id}>`);const ff=teams.filter(t=>t.kind==='firefighter'&&t.parentId===lt.id&&t.active!==false);lines.push(...(ff.length?ff.map(f=>`• <@${f.id}>`):['_Nenhum bombeiro vinculado_']));lines.push('');}
+  for(const lt of lts){lines.push(`**Tenente:** <@${lt.id}>`);lines.push('');const ff=teams.filter(t=>t.kind==='firefighter'&&t.parentId===lt.id&&t.active!==false);lines.push(...(ff.length?ff.map(f=>`• <@${f.id}>`):['_Nenhum bombeiro vinculado_']));lines.push('');}
   if(!lines.length)lines.push('_Nenhum tenente vinculado_');
   let description='';let part=1;
   for(const line of lines){if(description.length+line.length+1>3800){embeds.push(new EmbedBuilder().setColor(0xc62828).setTitle(`SSFD • ${cap.name||'Equipe'} (${part++})`).setDescription(description));description='';}description+=line+'\n';}
