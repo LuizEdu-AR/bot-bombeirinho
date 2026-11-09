@@ -60,7 +60,14 @@ function details(d) {
 }
 function agendaEmbed(d) {
     const st = { pending: 'Aguardando contato', contacted: 'Contato realizado', cancelled: 'Cancelada', completed: 'Concluída' };
-    return e('🚒 SSFD • Agendamento de Vistoria', `${details(d.establishment)}\n\n**Jurídico responsável:** <@${d.scheduledBy.discordId}> (${d.scheduledBy.name} | ID: ${d.scheduledBy.rpId} | Tel: ${d.scheduledBy.phone})\n**Status:** ${st[d.status] || d.status}${d.contactedBy ? `\n**Contato realizado por:** <@${d.contactedBy}>` : ''}${d.completedBy ? `\n**Concluída por:** <@${d.completedBy}>` : ''}${d.reportUrl ? `\n**Relatório:** ${d.reportUrl}` : ''}`);
+    const statusColors = {
+        pending: 0xd92929,
+        contacted: 0x3498db,
+        completed: 0x2ecc71,
+        cancelled: 0xd92929
+    };
+
+    return e('🚒 SSFD • Agendamento de Vistoria', `${details(d.establishment)}\n\n**Jurídico responsável:** <@${d.scheduledBy.discordId}> (${d.scheduledBy.name} | ID: ${d.scheduledBy.rpId} | Tel: ${d.scheduledBy.phone})\n**Status:** ${st[d.status] || d.status}${d.contactedBy ? `\n**Contato realizado por:** <@${d.contactedBy}>` : ''}${d.completedBy ? `\n**Concluída por:** <@${d.completedBy}>` : ''}${d.reportUrl ? `\n**Relatório:** ${d.reportUrl}` : ''}`).setColor(statusColors[d.status] ?? 0xd92929);
 }
 // O ping fica fora do embed para notificar o Jurídico; os dados ficam no cartão.
 function informeEmbed(inspection, responsibleId, completed, reportUrl, reason) {
