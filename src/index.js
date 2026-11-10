@@ -18,6 +18,7 @@ const { handleSyncCourses } = require('./services/sincronizar-cursos');
 const { handleManualRegistration } = require('./services/cadastrar-bombeiro');
 const { handleGestao } = require('./services/gestao-cargos');
 const { handleTeams } = require('./services/gestao-equipes');
+const { handleBau } = require('./services/registro-bau');
 const { registerHierarchy } = require('./services/hierarquia');
 const { handleNicks } = require('./services/padronizar-nicks');
 const { handleSuggestionMessage, handleSuggestionInteraction } = require('./services/sugestoes');
@@ -111,6 +112,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
                 return await handleSyncIds(interaction);
             if (interaction.customId.startsWith('nicks:'))
                 return await handleNicks(interaction);
+            if (interaction.customId.startsWith('bau:'))
+                return await handleBau(interaction);
             if (interaction.customId.startsWith('equipes:'))
                 return await handleTeams(interaction);
             if (interaction.customId.startsWith('gest:'))

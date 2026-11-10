@@ -16,6 +16,8 @@ module.exports = {
         logsPontoCidade: '1541156095181983864',
         gestaoCargos: '1560291195853475931',
         hierarquia: '1560362430549200916',
+        registroBau: '1569514795483537418',
+        logBau: '1569562236031340565',
         gestaoEquipes: '1567217957950726224',
         equipes: '1567218051575844936'
     },
