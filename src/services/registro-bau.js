@@ -45,13 +45,13 @@ function panel() {
         [
             {
                 id: 'bau:add',
-                label: 'Adicionar',
+                label: 'Guardar',
                 description: 'Registre um item guardado no baú.',
                 style: ButtonStyle.Success
             },
             {
                 id: 'bau:remove',
-                label: 'Remover',
+                label: 'Retirar',
                 description: 'Registre um item retirado e o motivo da retirada.',
                 style: ButtonStyle.Danger
             }
@@ -94,8 +94,8 @@ function itemSelection(operation) {
 
     return {
         content: operation === 'add'
-            ? '**Adicionar ao baú** — selecione o item que foi guardado.'
-            : '**Remover do baú** — selecione o item que foi retirado.',
+            ? '**Guardar no baú** — selecione o item que foi guardado.'
+            : '**Retirar do baú** — selecione o item que foi retirado.',
         components: [new ActionRowBuilder().addComponents(menu)],
         flags: EPHEMERAL
     };
@@ -133,7 +133,7 @@ function movementModal(operation, itemKey) {
 
     return new ModalBuilder()
         .setCustomId(`bau:submit:${operation}:${itemKey}`)
-        .setTitle(operation === 'add' ? 'Adicionar item ao baú' : 'Remover item do baú')
+        .setTitle(operation === 'add' ? 'Guardar item no baú' : 'Retirar item do baú')
         .addComponents(...fields);
 }
 
@@ -244,7 +244,7 @@ async function recordMovement(interaction, operation, itemKey) {
 
     await interaction.editReply({
         content: logSent
-            ? `Movimentação registrada: **${operation === 'add' ? 'adição' : 'remoção'}** de **${quantity}** unidade(s) de **${item}**. O log foi publicado em <#${channels.logBau}>.`
+            ? `Movimentação registrada: **${operation === 'add' ? 'adição' : 'remoção'}** de **${quantity}** unidade(s) de **${item}**.`
             : 'Movimentação salva no Firebase, mas não foi possível publicar o log no Discord. Avise a administração para verificar o canal de logs.'
     });
 }
