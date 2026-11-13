@@ -1,5 +1,5 @@
 const { hasPanelTitle } = require('./panel-components-v2');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { channels } = require('../config/ids');
 const { panel } = require('./registrations');
 const { panel: controlPanel } = require('./controle-ponto');
@@ -17,7 +17,7 @@ async function ensureSetagemPanel(guild) {
     const channel = await guild.channels.fetch(channels.setagem);
     if (!channel?.isTextBased() || !channel.messages?.fetch)
         throw new Error('Canal de Setagem não é um canal de mensagens acessível.');
-    const ref = db.collection('guilds').doc(guild.id).collection('panels').doc(PANEL_KEY);
+    const ref = guildCollection(guild.id, 'panels').doc(PANEL_KEY);
     const snap = await ref.get();
     let message = null;
     if (snap.exists && snap.data()?.channelId === channel.id && snap.data()?.messageId) {
@@ -50,7 +50,7 @@ async function ensureControlePanel(guild) {
     const channel = await guild.channels.fetch(channels.controlePonto);
     if (!channel?.isTextBased() || !channel.messages?.fetch)
         throw new Error('Canal Controle de Ponto indisponível.');
-    const ref = db.collection('guilds').doc(guild.id).collection('panels').doc('controlePonto');
+    const ref = guildCollection(guild.id, 'panels').doc('controlePonto');
     const snap = await ref.get();
     let message = null;
     if (snap.exists && snap.data()?.channelId === channel.id && snap.data()?.messageId) {
@@ -73,7 +73,7 @@ async function ensureVistoriaPanel(guild, key, channelId, title, content) {
     const channel = await guild.channels.fetch(channelId);
     if (!channel?.isTextBased() || !channel.messages?.fetch)
         throw new Error(`Canal ${key} indisponível.`);
-    const ref = db.collection('guilds').doc(guild.id).collection('panels').doc(key);
+    const ref = guildCollection(guild.id, 'panels').doc(key);
     const snap = await ref.get();
     let message = null;
     if (snap.exists && snap.data()?.messageId && snap.data()?.channelId === channel.id) {
@@ -96,7 +96,7 @@ async function ensureGestaoPanel(guild) {
     const channel = await guild.channels.fetch(channels.gestaoCargos);
     if (!channel?.isTextBased() || !channel.messages?.fetch)
         throw new Error('Canal Gestão de Cargos indisponível.');
-    const ref = db.collection('guilds').doc(guild.id).collection('panels').doc('gestaoCargos');
+    const ref = guildCollection(guild.id, 'panels').doc('gestaoCargos');
     const snap = await ref.get();
     let message = null;
     if (snap.exists && snap.data()?.channelId === channel.id && snap.data()?.messageId)
@@ -113,7 +113,7 @@ async function ensureGestaoPanel(guild) {
         message = await channel.send(gestaoPanel());
     await ref.set({ channelId: channel.id, messageId: message.id, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     // Remover o painel antigo de importação, sem excluir os registros do Firebase.
-    const oldRef = db.collection('guilds').doc(guild.id).collection('panels').doc('syncMembers');
+    const oldRef = guildCollection(guild.id, 'panels').doc('syncMembers');
     const oldSnap = await oldRef.get();
     if (oldSnap.exists && oldSnap.data()?.messageId) {
         const old = await channel.messages.fetch(oldSnap.data().messageId).catch(() => null);
@@ -129,6 +129,7 @@ async function ensureGestaoPanel(guild) {
 }
 async function ensurePanels(client) {
     for (const guild of client.guilds.cache.values()) {
+        if (guild.id !== '1318928108601999392') continue;
         try {
             await ensureSetagemPanel(guild);
             await ensureControlePanel(guild);

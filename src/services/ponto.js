@@ -1,5 +1,5 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { channels, roles } = require('../config/ids');
 const { hasPatente } = require('../utils/patentes');
 const { hasAnyRole } = require('../utils/permissions');
@@ -7,7 +7,7 @@ const { randomUUID } = require('node:crypto');
 const ephemeral = MessageFlags.Ephemeral;
 const now = () => Date.now();
 const stamp = ms => admin.firestore.Timestamp.fromMillis(ms);
-const base = (g, u) => db.collection('guilds').doc(g).collection('pontos').doc(u);
+const base = (g, u) => guildCollection(g, 'pontos').doc(u);
 const fmt = ms => {
     const m = Math.floor(Math.max(0, ms) / 60000);
     return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}min`;

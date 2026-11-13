@@ -1,6 +1,6 @@
 'use strict';
 const { AttachmentBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } = require('discord.js');
-const { db } = require('./firebase');
+const { db, guildCollection } = require('./firebase');
 const { roles } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
 const CHANNEL_ID = '1477673762596978828';
@@ -242,7 +242,7 @@ async function handleAnalysis(i) {
                     cnpjToGroups.set(c, new Set());
                 cnpjToGroups.get(c).add(g);
             }
-        const snap = await db.collection('guilds').doc(i.guildId).collection('establishments').get();
+        const snap = await guildCollection(i.guildId, 'establishments').get();
         const existing = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         groups.forEach((g, idx) => {
             g.id = idx + 1;

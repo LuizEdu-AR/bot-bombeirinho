@@ -1,11 +1,11 @@
 'use strict';
 const { MessageFlags } = require('discord.js');
 const { roles, courses } = require('../config/ids');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { administrativeLog } = require('./logs-administrativos');
 const { PATENTES } = require('../utils/patentes');
 const ADMINS = [roles.manutencao, roles.chefe, roles.chefeAdjunto];
-const reg = (g, u) => db.collection('guilds').doc(g).collection('registrations').doc(u);
+const reg = (g, u) => guildCollection(g, 'registrations').doc(u);
 const sanitize = s => String(s || '').trim().replace(/[\r\n<>@]/g, '').slice(0, 80);
 async function handleManualRegistration(interaction) {
     if (!interaction.guild || !ADMINS.some(id => interaction.member?.roles?.cache?.has(id)))

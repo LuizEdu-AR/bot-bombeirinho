@@ -1,15 +1,15 @@
 const { administrativeLog } = require('./logs-administrativos');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { roles, courses } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
 const ALLOWED = [roles.chefe, roles.chefeAdjunto];
 const rankEntries = Object.entries(roles).filter(([key]) => ['chefe', 'chefeAdjunto', 'chefeBatalhao', 'capitao', 'tenente', 'bombeiroIII', 'bombeiroII', 'bombeiroI', 'cadete'].includes(key));
 const courseEntries = Object.entries(courses);
 const extraEntries = Object.entries(roles).filter(([key]) => !rankEntries.some(([k]) => k === key));
-const ref = (g, u) => db.collection('guilds').doc(g).collection('registrations').doc(u);
-const syncRef = (g, u) => db.collection('guilds').doc(g).collection('memberSync').doc(u);
-const stateRef = g => db.collection('guilds').doc(g).collection('syncSettings').doc('members');
+const ref = (g, u) => guildCollection(g, 'registrations').doc(u);
+const syncRef = (g, u) => guildCollection(g, 'memberSync').doc(u);
+const stateRef = g => guildCollection(g, 'syncSettings').doc('members');
 const match = (member, entries) => entries.filter(([, id]) => member.roles.cache.has(id)).map(([key]) => key);
 function identity(member) {
     const nickname = member.nickname || member.user.globalName || member.user.username;
@@ -61,7 +61,7 @@ async function onMemberUpdate(oldMember, newMember) {
             catch (err) {
                 console.error('[Promoção] Não foi possível remover Bombeiro I:', err);
             }
-            await db.collection('guilds').doc(newMember.guild.id).collection('registrations').doc(newMember.id).collection('managementEvents').add({ type: 'automatic_promotion', from: 'bombeiroI', to: 'bombeiroII', courseIds: courseEntries.filter(([, id]) => !oldMember.roles.cache.has(id) && newMember.roles.cache.has(id)).map(([, id]) => id), at: admin.firestore.FieldValue.serverTimestamp() });
+            await guildCollection(newMember.guild.id, 'registrations').doc(newMember.id).collection('managementEvents').add({ type: 'automatic_promotion', from: 'bombeiroI', to: 'bombeiroII', courseIds: courseEntries.filter(([, id]) => !oldMember.roles.cache.has(id) && newMember.roles.cache.has(id)).map(([, id]) => id), at: admin.firestore.FieldValue.serverTimestamp() });
             await administrativeLog(newMember.guild.id, 'automatic_promotion', { targetId: newMember.id, details: { De: 'Bombeiro I', Para: 'Bombeiro II' }, key: `promotion-${newMember.id}-${Date.now()}` });
             console.log(`[Promoção] ${newMember.id} Bombeiro I -> Bombeiro II`);
         }

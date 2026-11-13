@@ -3,7 +3,7 @@ const { Client, GatewayIntentBits, Events, MessageFlags } = require('discord.js'
 const { channels } = require('./config/ids');
 const { initAdministrativeLogs } = require('./services/logs-administrativos');
 const { panel, handleRegistration } = require('./services/registrations');
-require('./services/firebase');
+const { SSFD_GUILD_ID } = require('./services/firebase');
 const { onMemberLeave, reconcileMembership } = require('./services/membership');
 const { ensurePanels, ensureCadastroVistoriaPanel } = require('./services/panels');
 const { ensureBotHelp } = require('./services/bot-help');
@@ -31,15 +31,17 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 registerHierarchy(client);
 initAdministrativeLogs(client);
 client.on(Events.MessageCreate, message => {
+    if (message.guildId !== SSFD_GUILD_ID) return;
     handleSuggestionMessage(message).catch(err => console.error('[Sugestões] Erro:', err));
     handleFiveMLog(message).catch(err => console.error('[FiveM] Erro:', err));
 });
-client.on(Events.GuildMemberRemove, member => onMemberLeave(member).catch(err => console.error('Erro ao registrar saída:', err)));
+client.on(Events.GuildMemberRemove, member => member.guild.id === SSFD_GUILD_ID && onMemberLeave(member).catch(err => console.error('Erro ao registrar saída:', err)));
 client.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
+    if (newMember.guild.id !== SSFD_GUILD_ID) return;
     onMemberUpdate(oldMember, newMember).catch(err => console.error('Erro ao sincronizar cargos:', err));
     onNicknameUpdate(oldMember, newMember).catch(err => console.error('Erro ao sincronizar ID:', err));
 });
-client.on(Events.GuildMemberAdd, member => reconcileMembership(member).catch(err => console.error('Erro ao verificar reentrada:', err)));
+client.on(Events.GuildMemberAdd, member => member.guild.id === SSFD_GUILD_ID && reconcileMembership(member).catch(err => console.error('Erro ao verificar reentrada:', err)));
 // Restaura o painel caso sua mensagem seja apagada enquanto o bot está online.
 let cadastroRepairTimer = null;
 let cadastroRepairRunning = false;
@@ -49,6 +51,7 @@ async function repairCadastroPanel() {
     cadastroRepairRunning = true;
     try {
         for (const guild of client.guilds.cache.values()) {
+            if (guild.id !== SSFD_GUILD_ID) continue;
             await ensureCadastroVistoriaPanel(guild).catch(err => console.error('[Vistorias] Falha ao recuperar painel:', err));
         }
     }
@@ -63,6 +66,9 @@ client.on(Events.MessageDelete, message => {
     setTimeout(() => repairCadastroPanel().catch(console.error), 1500);
 });
 client.once(Events.ClientReady, async (c) => {
+    for (const guild of c.guilds.cache.values()) {
+        if (guild.id !== SSFD_GUILD_ID) await guild.leave().catch(err => console.error('[SSFD] Não foi possível sair de servidor não autorizado:', err));
+    }
     console.log(`🚒 Bombeirinho online como ${c.user.tag}`);
     await ensurePanels(c);
     // Verificação leve a cada 10 minutos; também cobre exclusões fora do cache do Discord.
@@ -72,6 +78,10 @@ client.once(Events.ClientReady, async (c) => {
     await ensureBotHelp(c).catch(err => console.error('[Bot Help] Erro:', err));
 });
 client.on(Events.InteractionCreate, async (interaction) => {
+    if (interaction.guildId !== SSFD_GUILD_ID) {
+        if (interaction.isRepliable()) await interaction.reply({ content: 'Este bot é exclusivo do servidor oficial SSFD.', flags: MessageFlags.Ephemeral }).catch(() => {});
+        return;
+    }
     try {
         if (interaction.isChatInputCommand()) {
             if (interaction.commandName === 'painel-telefone')
@@ -143,5 +153,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
             await interaction.reply(msg).catch(() => {
             });
     }
+});
+client.on(Events.GuildCreate, guild => {
+    if (guild.id !== SSFD_GUILD_ID) guild.leave().catch(err => console.error('[SSFD] Falha ao sair:', err));
 });
 client.login(process.env.DISCORD_TOKEN);

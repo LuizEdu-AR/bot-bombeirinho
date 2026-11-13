@@ -3,17 +3,16 @@ const { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBu
 const { randomUUID } = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { channels, roles } = require('../config/ids');
 const EP = MessageFlags.Ephemeral;
 const ROOT = path.join(__dirname, '..', 'assets', 'atestados');
 const LOGO = fs.readFileSync(path.join(ROOT, 'cabecalho.png')).toString('base64');
 const WATERMARK = fs.readFileSync(path.join(ROOT, 'marca-dagua.png')).toString('base64');
 const SEAL = fs.readFileSync(path.join(ROOT, 'selo.png')).toString('base64');
-const guildDoc = id => db.collection('guilds').doc(id);
-const places = id => guildDoc(id).collection('establishments');
-const drafts = id => guildDoc(id).collection('attestationDrafts');
-const documents = id => guildDoc(id).collection('attestations');
+const places = id => guildCollection(id, 'establishments');
+const drafts = id => guildCollection(id, 'attestationDrafts');
+const documents = id => guildCollection(id, 'attestations');
 const clauses = [
     'Fluxos e redes de GLP (Gás Liquefeito de Petróleo) e/ou fontes de gases inflamáveis;',
     'Checagem de materiais combustíveis não permitidos;',
@@ -44,11 +43,12 @@ function panel() {
 }
 async function ensurePanel(client) {
     for (const guild of client.guilds.cache.values()) {
+        if (guild.id !== '1318928108601999392') continue;
         try {
             const channel = await guild.channels.fetch(channels.emissaoAtestados);
             if (!channel?.isTextBased() || !channel.messages?.fetch)
                 continue;
-            const ref = guildDoc(guild.id).collection('panels').doc('emissaoAtestados');
+            const ref = guildCollection(guild.id, 'panels').doc('emissaoAtestados');
             const snap = await ref.get();
             let message = snap.data()?.messageId ? await channel.messages.fetch(snap.data().messageId).catch(() => null) : null;
             if (message?.author?.id !== client.user.id || !message.components?.some(row => row.components.some(button => button.customId === 'atest:start')))
@@ -210,7 +210,7 @@ async function identifyInspector(i) {
     const member = await i.guild.members.fetch(i.user.id);
     if (!rankIds.some(id => member.roles.cache.has(id)))
         throw new Error('Somente bombeiros cadastrados podem emitir atestados.');
-    const snap = await guildDoc(i.guildId).collection('registrations').doc(i.user.id).get();
+    const snap = await guildCollection(i.guildId, 'registrations').doc(i.user.id).get();
     const d = snap.data() || {};
     const rank = [...rankNames.entries()].find(([id]) => member.roles.cache.has(id))?.[1] || 'Bombeiro';
     return {
@@ -264,7 +264,7 @@ const PHONE_MODAL = 'atest:phone:save';
 const PHONE_INPUT = 'atest:phone:number';
 const validPhone = phone => /^[0-9+() .-]{4,35}$/.test(phone) && phone.replace(/\D/g, '').length >= 4;
 async function requirePhoneOrSelect(i) {
-    const ref = guildDoc(i.guildId).collection('registrations').doc(i.user.id);
+    const ref = guildCollection(i.guildId, 'registrations').doc(i.user.id);
     const snapshot = await ref.get();
     const registration = snapshot.data();
     if (!snapshot.exists || registration?.status !== 'approved' || !registration?.name) {
@@ -283,7 +283,7 @@ async function savePhoneAndContinue(i) {
     const phone = i.fields.getTextInputValue(PHONE_INPUT).trim();
     if (!validPhone(phone))
         return i.reply({ content: 'Telefone inválido. Informe pelo menos quatro dígitos; são aceitos espaços, hífens, parênteses e +.', flags: EP });
-    const ref = guildDoc(i.guildId).collection('registrations').doc(i.user.id);
+    const ref = guildCollection(i.guildId, 'registrations').doc(i.user.id);
     try {
         await db.runTransaction(async (tx) => {
             const snap = await tx.get(ref);
@@ -324,7 +324,7 @@ async function handleAtestados(i) {
     }
     if (id === 'atest:choose') {
         await identifyInspector(i);
-        const registration = await guildDoc(i.guildId).collection('registrations').doc(i.user.id).get();
+        const registration = await guildCollection(i.guildId, 'registrations').doc(i.user.id).get();
         if (!String(registration.data()?.phone || '').trim())
             return requirePhoneOrSelect(i);
         const placeId = i.values[0];

@@ -2,7 +2,7 @@ const { administrativePanel } = require('./panel-components-v2');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
 const { roles, courses, channels } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { saveSnapshot } = require('./sync-members');
 const { administrativeLog } = require('./logs-administrativos');
 const admins = [roles.chefeBatalhao, roles.chefeAdjunto, roles.chefe];
@@ -86,7 +86,7 @@ const rankKeys = ['chefe', 'chefeAdjunto', 'chefeBatalhao', 'capitao', 'tenente'
 const rankOptions = rankKeys.map(key => ({ label: ({ chefe: 'Chefe', chefeAdjunto: 'Chefe Adjunto', chefeBatalhao: 'Chefe de Batalhão', capitao: 'Capitão', tenente: 'Tenente', bombeiroIII: 'Bombeiro III', bombeiroII: 'Bombeiro II', bombeiroI: 'Bombeiro I', cadete: 'Cadete' })[key], value: key }));
 const courseOptions = Object.entries(courses).map(([key, id]) => ({ label: key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).slice(0, 100), value: key, description: `Cargo ${id}` }));
 const ephemeral = { flags: MessageFlags.Ephemeral };
-const reg = (g, u) => db.collection('guilds').doc(g).collection('registrations').doc(u);
+const reg = (g, u) => guildCollection(g, 'registrations').doc(u);
 const events = (g, u) => reg(g, u).collection('managementEvents');
 const clean = s => s.trim().replace(/[\r\n<>@]/g, '').slice(0, 80);
 function panel() {
@@ -203,7 +203,7 @@ async function handleGestao(interaction) {
         scheduleDrafts.delete(draftKey(interaction));
         await administrativeLog(interaction.guildId, 'course_scheduled', { actorId: interaction.user.id, targetId: d.instructorId, details: { Cursos: d.courses.map(k => scheduleCourseNames[k]).join(', '), Programação: sessionText(d.sessions), Local: d.location }, key: `course-${msg.id}` });
         try {
-            await db.collection('guilds').doc(interaction.guildId).collection('courseSchedules').doc(msg.id).set({ date: d.sessions[0].date, time: d.sessions[0].time, sessions: d.sessions, location: d.location, courses: d.courses, instructorId: d.instructorId, createdBy: interaction.user.id, channelId: channel.id, messageId: msg.id, status: 'scheduled', createdAt: admin.firestore.FieldValue.serverTimestamp() });
+            await guildCollection(interaction.guildId, 'courseSchedules').doc(msg.id).set({ date: d.sessions[0].date, time: d.sessions[0].time, sessions: d.sessions, location: d.location, courses: d.courses, instructorId: d.instructorId, createdBy: interaction.user.id, channelId: channel.id, messageId: msg.id, status: 'scheduled', createdAt: admin.firestore.FieldValue.serverTimestamp() });
         }
         catch (err) {
             console.error('[Gestão] Salvar agendamento:', err);

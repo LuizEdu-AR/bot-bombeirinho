@@ -2,15 +2,14 @@ const { administrativePanel } = require('./panel-components-v2');
 const { administrativeLog } = require('./logs-administrativos');
 const { randomBytes } = require('node:crypto');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, UserSelectMenuBuilder, MessageFlags, AttachmentBuilder } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { roles } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
 const COMMAND = [roles.tenente, roles.capitao, roles.chefeBatalhao, roles.chefeAdjunto, roles.chefe];
 const RESET_ROLES = [roles.chefeBatalhao, roles.chefe, roles.chefeAdjunto];
 const privateReply = content => ({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
-const guildRef = guildId => db.collection('guilds').doc(guildId);
-const pointsRef = guildId => guildRef(guildId).collection('pontos');
-const settingsRef = guildId => guildRef(guildId).collection('settings').doc('rankingPonto');
+const pointsRef = guildId => guildCollection(guildId, 'pontos');
+const settingsRef = guildId => guildCollection(guildId, 'settings').doc('rankingPonto');
 const duration = ms => {
     const minutes = Math.floor(Math.max(0, Number(ms) || 0) / 60000);
     const days = Math.floor(minutes / 1440);
@@ -242,7 +241,7 @@ async function handleControle(interaction) {
     if (id === 'controle:reset:confirmar') {
         await interaction.deferUpdate();
         const ref = settingsRef(interaction.guildId);
-        const eventRef = guildRef(interaction.guildId).collection('rankingResets').doc();
+        const eventRef = guildCollection(interaction.guildId, 'rankingResets').doc();
         const now = admin.firestore.Timestamp.now();
         await db.runTransaction(async (tx) => {
             const previous = await tx.get(ref);

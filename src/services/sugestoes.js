@@ -1,9 +1,9 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { channels } = require('../config/ids');
 const MAX_TEXT = 3500;
 const pending = new Set();
-const suggestionRef = (guildId, id) => db.collection('guilds').doc(guildId).collection('suggestions').doc(String(id));
+const suggestionRef = (guildId, id) => guildCollection(guildId, 'suggestions').doc(String(id));
 function view(s) {
     const total = (s.agree || 0) + (s.disagree || 0);
     const percentage = total ? Math.round(100 * (s.agree || 0) / total) : 0;
@@ -18,7 +18,7 @@ function view(s) {
     return { embeds: [embed], components: [row], allowedMentions: { parse: [] } };
 }
 async function nextNumber(guildId) {
-    const ref = db.collection('guilds').doc(guildId).collection('counters').doc('suggestions');
+    const ref = guildCollection(guildId, 'counters').doc('suggestions');
     return db.runTransaction(async (tx) => {
         const snap = await tx.get(ref);
         const number = (snap.data()?.last || 0) + 1;

@@ -14,3 +14,13 @@ else
 if (!admin.apps.length)
     admin.initializeApp({ credential });
 module.exports = { db: admin.firestore(), admin };
+
+// Banco dedicado exclusivamente ao servidor oficial SSFD.
+const SSFD_GUILD_ID = '1318928108601999392';
+function guildCollection(guildId, name) {
+    if (String(guildId) !== SSFD_GUILD_ID)
+        throw new Error(`Servidor Discord não autorizado: ${guildId}`);
+    return admin.firestore().collection(name);
+}
+module.exports.guildCollection = guildCollection;
+module.exports.SSFD_GUILD_ID = SSFD_GUILD_ID;

@@ -1,5 +1,5 @@
-const { db, admin } = require('./firebase');
-const registrationRef = (guildId, userId) => db.collection('guilds').doc(guildId).collection('registrations').doc(userId);
+const { db, admin, guildCollection } = require('./firebase');
+const registrationRef = (guildId, userId) => guildCollection(guildId, 'registrations').doc(userId);
 const historyRef = (guildId, userId) => registrationRef(guildId, userId).collection('membershipEvents');
 const timestampMs = value => typeof value?.toMillis === 'function' ? value.toMillis() : null;
 // Ao sair, invalida a autorização atual sem apagar o documento ou seus dados históricos.

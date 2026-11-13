@@ -1,6 +1,6 @@
 'use strict';
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, ChannelType, PermissionFlagsBits, } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { roles } = require('../config/ids');
 const BUTTON_ID = 'telefone:abrir';
 const MODAL_ID = 'telefone:salvar';
@@ -37,7 +37,7 @@ async function handlePhone(interaction) {
     if (!interaction.inGuild()) {
         return interaction.reply({ content: 'Este recurso só funciona no servidor da SSFD.', flags: MessageFlags.Ephemeral });
     }
-    const ref = db.collection('guilds').doc(interaction.guildId).collection('registrations').doc(interaction.user.id);
+    const ref = guildCollection(interaction.guildId, 'registrations').doc(interaction.user.id);
     if (interaction.customId === BUTTON_ID) {
         const snapshot = await ref.get();
         const data = snapshot.data();

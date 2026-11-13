@@ -1,6 +1,6 @@
 'use strict';
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { roles } = require('../config/ids');
 const SOURCE_CHANNEL = '1318928109831061534';
 const PREFIX = 'synctel:';
@@ -90,7 +90,7 @@ async function analyze(interaction) {
         throw new Error('Canal antigo indisponível ou sem permissão para ler o histórico.');
     const [{ records, count }, snapshot, members] = await Promise.all([
         getHistory(channel),
-        db.collection('guilds').doc(interaction.guildId).collection('registrations').get(),
+        guildCollection(interaction.guildId, 'registrations').get(),
         interaction.guild.members.fetch(),
     ]);
     const byName = new Map();
@@ -187,7 +187,7 @@ async function handleSyncPhones(interaction) {
     sessions.delete(interaction.user.id);
     await interaction.deferUpdate();
     let updated = 0, ignored = 0;
-    const registrations = db.collection('guilds').doc(interaction.guildId).collection('registrations');
+    const registrations = guildCollection(interaction.guildId, 'registrations');
     for (const candidate of session.candidates) {
         try {
             const member = await interaction.guild.members.fetch(candidate.userId).catch(() => null);

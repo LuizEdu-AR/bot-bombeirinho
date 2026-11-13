@@ -1,5 +1,5 @@
 const { administrativeLog } = require('./logs-administrativos');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { registrationTypes } = require('../config/registration');
 const { channels } = require('../config/ids');
 const { hasPatente, fetchMember } = require('../utils/patentes');
@@ -8,7 +8,7 @@ const { reconcileMembership } = require('./membership');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 const ephemeral = { flags: MessageFlags.Ephemeral };
 const clean = str => str.trim().replace(/[\r\n<>@]/g, '').slice(0, 100);
-const refFor = (guildId, userId) => db.collection('guilds').doc(guildId).collection('registrations').doc(userId);
+const refFor = (guildId, userId) => guildCollection(guildId, 'registrations').doc(userId);
 // Atualiza o cartão original de autorização, mantendo os dados do cadastro.
 async function updateReviewCard(message, status, reviewerId, reason) {
     if (!message)

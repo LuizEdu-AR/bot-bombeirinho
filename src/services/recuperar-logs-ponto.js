@@ -1,6 +1,6 @@
 'use strict';
 const { MessageFlags } = require('discord.js');
-const { db } = require('./firebase');
+const { db, guildCollection } = require('./firebase');
 const { channels, roles } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
 const { handleFiveMLog, parseLog, messageText } = require('./ponto-fivem');
@@ -59,7 +59,7 @@ async function handleRecoverLogs(interaction) {
         if (!channel?.isTextBased())
             return interaction.editReply('Canal de logs do FiveM indisponível.');
         const { events, fetched, limited } = await scan(channel, hours);
-        const collection = db.collection('guilds').doc(key).collection('fivemPontoEvents');
+        const collection = guildCollection(key, 'fivemPontoEvents');
         let processed = 0, pending = 0, conflicts = 0, unresolved = 0, failed = 0;
         // Prévia: apenas consulta UUIDs existentes; nenhuma alteração no Firebase.
         for (let offset = 0; offset < events.length; offset += 50) {

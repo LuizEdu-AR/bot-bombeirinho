@@ -1,6 +1,6 @@
 'use strict';
 const { randomUUID } = require('node:crypto');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { channels, roles } = require('../config/ids');
 const { parseId } = require('./sincronizar-ids');
 const { display, log, updatePublicMessage, base, stamp } = require('./ponto');
@@ -32,7 +32,7 @@ function parseLog(text) {
     return { rpId: idLine[1], name: idLine[2].trim(), action: idLine[3].toUpperCase().startsWith('ENTROU') ? 'open' : 'close', atMs: ms, uuid: uuid[1].toLowerCase() };
 }
 async function resolveUser(guild, rpId) {
-    const registrations = db.collection('guilds').doc(guild.id).collection('registrations');
+    const registrations = guildCollection(guild.id, 'registrations');
     const found = new Set();
     // Fonte principal: ID confirmado no cadastro, sem depender do nome.
     const exact = await registrations.where('rpId', '==', rpId).get();
@@ -74,7 +74,7 @@ async function handleFiveMLog(message, { recovery = false } = {}) {
     if (!userId)
         return { kind: 'unresolved' };
     const ref = base(message.guild.id, userId);
-    const eventRef = db.collection('guilds').doc(message.guild.id).collection('fivemPontoEvents').doc(event.uuid);
+    const eventRef = guildCollection(message.guild.id, 'fivemPontoEvents').doc(event.uuid);
     let result = null, outcome = 'duplicate';
     await db.runTransaction(async (tx) => {
         const [seen, snap] = await Promise.all([tx.get(eventRef), tx.get(ref)]);

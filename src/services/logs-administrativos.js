@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const CHANNEL_ID = '1560709138567139388';
 let client;
 function initAdministrativeLogs(discordClient) {
@@ -46,7 +46,7 @@ function formatted(type, details, guild) {
 async function administrativeLog(guildId, type, { actorId = null, targetId = null, details = {}, key = null } = {}) {
     try {
         const payload = { type, actorId: actorId || null, targetId: targetId || null, details, at: admin.firestore.FieldValue.serverTimestamp() };
-        const collection = db.collection('guilds').doc(guildId).collection('administrativeLogs');
+        const collection = guildCollection(guildId, 'administrativeLogs');
         const ref = key ? collection.doc(key) : collection.doc();
         if (key) {
             try {

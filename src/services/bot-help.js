@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { channels } = require('../config/ids');
 const ITEMS = [
     {
@@ -28,7 +28,7 @@ async function ensureBotHelp(client) {
     if (!channel?.isTextBased() || !channel.messages?.fetch || !channel.guild) {
         throw new Error('Canal bot-help não encontrado ou sem acesso a mensagens.');
     }
-    const collection = db.collection('guilds').doc(channel.guild.id).collection('panels');
+    const collection = guildCollection(channel.guild.id, 'panels');
     for (const item of ITEMS) {
         try {
             const ref = collection.doc(item.key);

@@ -1,11 +1,11 @@
 'use strict';
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { roles } = require('../config/ids');
 const { administrativeLog } = require('./logs-administrativos');
 const pending = new Map();
 const TTL = 10 * 60 * 1000;
-const ref = (g, u) => db.collection('guilds').doc(g).collection('registrations').doc(u);
+const ref = (g, u) => guildCollection(g, 'registrations').doc(u);
 const missing = v => v === null || v === undefined || String(v).trim() === '' || /^n[aã]o cadastrad[oa]$/i.test(String(v).trim());
 function parseId(nickname, isStaff) {
     if (typeof nickname !== 'string')

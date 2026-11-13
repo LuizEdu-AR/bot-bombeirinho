@@ -1,12 +1,12 @@
 const { administrativePanel } = require('./panel-components-v2');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { roles, channels, teamRoles } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
 const MANAGERS = [roles.chefeBatalhao, roles.chefeAdjunto, roles.chefe];
 const captainIds = Object.values(teamRoles.captains), lieutenantIds = Object.values(teamRoles.lieutenants);
-const root = g => db.collection('guilds').doc(g).collection('teams');
-const state = g => db.collection('guilds').doc(g).collection('panels').doc('equipesPublicas');
+const root = g => guildCollection(g, 'teams');
+const state = g => guildCollection(g, 'panels').doc('equipesPublicas');
 const drafts = new Map();
 const key = i => `${i.guildId}:${i.user.id}`;
 const ephemeral = { flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } };
@@ -26,7 +26,7 @@ async function ensureMessage(guild, channelId, docId, content, title) {
     const channel = await guild.channels.fetch(channelId);
     if (!channel?.messages?.fetch)
         throw Error(`Canal ${channelId} inacessível`);
-    const ref = db.collection('guilds').doc(guild.id).collection('panels').doc(docId);
+    const ref = guildCollection(guild.id, 'panels').doc(docId);
     const snap = await ref.get();
     let message = snap.data()?.channelId === channel.id && snap.data()?.messageId ? await channel.messages.fetch(snap.data().messageId).catch(() => null) : null;
     if (message?.author?.id !== guild.client.user.id)

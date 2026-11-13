@@ -9,7 +9,7 @@ const {
     TextInputStyle
 } = require('discord.js');
 
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { channels, roles } = require('../config/ids');
 const { administrativePanel, hasPanelTitle } = require('./panel-components-v2');
 
@@ -215,9 +215,7 @@ async function recordMovement(interaction, operation, itemKey) {
     };
 
     // O ID da interação impede duplicidade do histórico caso haja reprocessamento.
-    const ref = db.collection('guilds')
-        .doc(interaction.guildId)
-        .collection('bauMovements')
+    const ref = guildCollection(interaction.guildId, 'bauMovements')
         .doc(interaction.id);
 
     await ref.create(record);
@@ -295,9 +293,7 @@ async function ensureBauPanel(guild) {
         throw new Error('Canal Registro Baú indisponível.');
     }
 
-    const ref = db.collection('guilds')
-        .doc(guild.id)
-        .collection('panels')
+    const ref = guildCollection(guild.id, 'panels')
         .doc(PANEL_KEY);
 
     const saved = await ref.get();

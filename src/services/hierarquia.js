@@ -1,6 +1,6 @@
 'use strict';
 const { EmbedBuilder, Routes } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { channels, roles } = require('../config/ids');
 const TITLE = '🚒 SSFD • Hierarquia da Corporação';
 const RANKS = [
@@ -90,7 +90,7 @@ async function refresh(guild) {
         throw new Error(`Consulta incompleta: API retornou ${members.length} membro(s), mas o servidor informa ${guild.memberCount}. Quadro preservado.`);
     }
     const embeds = buildEmbeds(members);
-    const ref = db.collection('guilds').doc(guild.id).collection('panels').doc('hierarquia');
+    const ref = guildCollection(guild.id, 'panels').doc('hierarquia');
     const snap = await ref.get();
     let message = null;
     if (snap.exists && snap.data()?.channelId === channel.id && snap.data()?.messageId) {
@@ -155,6 +155,7 @@ function registerHierarchy(client) {
     });
     client.once('ready', () => {
         for (const guild of client.guilds.cache.values()) {
+        if (guild.id !== '1318928108601999392') continue;
             run(guild);
             const periodic = setInterval(() => schedule(guild), 15 * 60 * 1000);
             periodic.unref?.();

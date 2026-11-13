@@ -1,7 +1,7 @@
 const { administrativePanel } = require('./panel-components-v2');
 const { administrativeLog } = require('./logs-administrativos');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { channels, roles } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
 const { randomUUID } = require('node:crypto');
@@ -9,10 +9,9 @@ const EP = MessageFlags.Ephemeral;
 const normalizeEstablishmentName = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const legalRoles = [roles.juridico, roles.chefeBatalhao, roles.chefeAdjunto, roles.chefe];
 const fireRoles = [roles.cadete, roles.bombeiroI, roles.bombeiroII, roles.bombeiroIII, roles.tenente, roles.capitao, roles.chefeBatalhao, roles.chefeAdjunto, roles.chefe];
-const guildRef = g => db.collection('guilds').doc(g);
-const establishments = g => guildRef(g).collection('establishments');
-const inspections = g => guildRef(g).collection('inspections');
-const drafts = g => guildRef(g).collection('inspectionDrafts');
+const establishments = g => guildCollection(g, 'establishments');
+const inspections = g => guildCollection(g, 'inspections');
+const drafts = g => guildCollection(g, 'inspectionDrafts');
 const clean = (v, max = 300) => String(v || '').trim().replace(/[\x00-\x1f]/g, ' ').slice(0, max);
 const field = (id, label, style = TextInputStyle.Short, required = true, max = 300, value = '') => {
     const t = new TextInputBuilder().setCustomId(id).setLabel(label).setStyle(style).setRequired(required).setMaxLength(max);
@@ -50,7 +49,7 @@ function agendaPanel() {
     return { embeds: [e('🚒 SSFD • Agendamento de Vistorias', 'Os agendamentos do Jurídico serão publicados neste canal. Utilize os botões de cada vistoria para registrar contato, cancelar ou concluir.')], components: [] };
 }
 async function actor(g, u) {
-    const s = await guildRef(g).collection('registrations').doc(u.id).get();
+    const s = await guildCollection(g, 'registrations').doc(u.id).get();
     const d = s.data() || {};
     return { discordId: u.id, name: clean(d.name || u.displayName || u.username, 80), rpId: clean(d.rpId || 'Não cadastrado', 30), phone: clean(d.phone || 'Não cadastrado', 40) };
 }

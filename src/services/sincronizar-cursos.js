@@ -1,9 +1,9 @@
 'use strict';
 const { MessageFlags } = require('discord.js');
 const { roles, courses } = require('../config/ids');
-const { db, admin } = require('./firebase');
+const { db, admin, guildCollection } = require('./firebase');
 const { administrativeLog } = require('./logs-administrativos');
-const reg = (guildId, userId) => db.collection('guilds').doc(guildId).collection('registrations').doc(userId);
+const reg = (guildId, userId) => guildCollection(guildId, 'registrations').doc(userId);
 const courseKeys = Object.keys(courses);
 const normalize = (value) => Array.isArray(value) ? value.filter(key => courseKeys.includes(key)) : [];
 async function handleSyncCourses(interaction) {
