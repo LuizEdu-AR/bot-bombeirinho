@@ -6,6 +6,7 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, UserSelectMe
 const { db, admin, guildCollection } = require('./firebase');
 const { roles } = require('../config/ids');
 const { hasAnyRole } = require('../utils/permissions');
+const { hasPatente } = require('../utils/patentes');
 const COMMAND = [roles.tenente, roles.capitao, roles.chefeBatalhao, roles.chefeAdjunto, roles.chefe];
 const RESET_ROLES = [roles.chefeBatalhao, roles.chefe, roles.chefeAdjunto];
 const privateReply = content => ({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
@@ -154,27 +155,46 @@ async function handleControle(interaction) {
     if (id === 'controle:ausencias') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const members = await interaction.guild.members.fetch();
-        const eligible = [...members.values()].filter(m => !m.user.bot && m.roles.cache.has(roles.bombeiros) &&
-            [roles.cadete, roles.bombeiroI, roles.bombeiroII, roles.bombeiroIII, roles.tenente, roles.capitao, roles.chefeBatalhao, roles.chefeAdjunto, roles.chefe].some(r => m.roles.cache.has(r)));
+        const eligible = [...members.values()].filter(member =>
+            !member.user.bot && member.roles.cache.has(roles.bombeiros) && hasPatente(member));
         const points = await pointsRef(interaction.guildId).get();
         const byId = new Map(points.docs.map(doc => [doc.id, doc]));
         const now = Date.now();
-        const entries = await Promise.all(eligible.map(async (m) => {
-            const point = byId.get(m.id);
+        const entries = await Promise.all(eligible.map(async member => {
+            const entry = { id: member.id, name: member.displayName || member.user.username, ms: null, active: false };
+            const point = byId.get(member.id);
             if (!point)
-                return { id: m.id, ms: null, active: false };
+                return entry;
             const data = point.data();
             if (['open', 'paused'].includes(data.status))
-                return { id: m.id, ms: 0, active: true };
-            const sessions = await point.ref.collection('sessions').orderBy('closedAtMs', 'desc').limit(1).get();
-            const last = Number(sessions.docs[0]?.data()?.closedAtMs || data.closedAtMs || 0);
-            return { id: m.id, ms: last > 0 ? Math.max(0, now - last) : null, active: false };
+                return { ...entry, ms: 0, active: true };
+            const query = point.ref.collection('sessions').orderBy('closedAtMs', 'desc');
+            const latest = await query.limit(1).get();
+            const first = latest.docs[0]?.data();
+            const sessions = first && (first.status !== 'closed' || !Number.isFinite(Number(first.closedAtMs)) || Number(first.closedAtMs) <= 0 || Number(first.closedAtMs) > now)
+                ? await query.get() : latest;
+            // Considere somente encerramentos válidos e compare com o registro principal.
+            const candidates = [data, ...sessions.docs.map(doc => doc.data())];
+            const last = candidates.reduce((latest, session) => {
+                const closed = Number(session.closedAtMs);
+                return session.status === 'closed' && Number.isFinite(closed) && closed > 0 && closed <= now
+                    ? Math.max(latest, closed) : latest;
+            }, 0);
+            return { ...entry, ms: last > 0 ? now - last : null };
         }));
-        entries.sort((a, b) => (b.ms ?? Infinity) - (a.ms ?? Infinity));
-        const lines = entries.map((e, i) => {
-            const minutes = Math.floor((e.ms || 0) / 60000), days = Math.floor(minutes / 1440), hours = Math.floor(minutes % 1440 / 60);
-            const status = e.active ? 'Em expediente' : e.ms === null ? 'Sem ponto registrado' : `${days} dia(s) e ${hours} hora(s)`;
-            return `${i + 1}. <@${e.id}> — **${status}**`;
+        // Sem histórico primeiro, ausências por duração exata e expedientes ativos por último.
+        const group = entry => entry.active ? 2 : entry.ms === null ? 0 : 1;
+        entries.sort((a, b) => group(a) - group(b) ||
+            (b.ms ?? 0) - (a.ms ?? 0) ||
+            a.name.localeCompare(b.name, 'pt-BR') || a.id.localeCompare(b.id));
+        const lines = entries.map((entry, i) => {
+            const minutes = Math.floor((entry.ms ?? 0) / 60000);
+            const days = Math.floor(minutes / 1440);
+            const hours = Math.floor(minutes % 1440 / 60);
+            const mins = minutes % 60;
+            const status = entry.active ? 'Em expediente' : entry.ms === null ? 'Sem ponto registrado' : `${days} dia(s), ${hours} hora(s) e ${mins} min`;
+            const name = entry.name.replace(/[\r\n]/g, ' ').replace(/([\\`*_~|<>])/g, '\\$1');
+            return `${i + 1}. ${name} — **${status}**`;
         });
         const pages = [];
         let page = '';
