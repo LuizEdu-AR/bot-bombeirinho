@@ -1,3 +1,4 @@
+const { formatDateTime } = require('../utils/datetime');
 const { administrativePanel } = require('./panel-components-v2');
 const { administrativeLog } = require('./logs-administrativos');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
@@ -82,7 +83,7 @@ function informeEmbed(inspection, responsibleId, completed, reportUrl, reason) {
     else {
         embed.addFields({ name: 'Motivo do cancelamento', value: clean(reason, 800) || 'Não informado' });
     }
-    return embed.setFooter({ text: 'Bombeirinho • South State Fire Department' }).setTimestamp();
+    return embed.setFooter({ text: 'Bombeirinho • South State Fire Department' + ` • ${formatDateTime()}` });
 }
 function agendaComponents(id, status) {
     if (status === 'cancelled' || status === 'completed')

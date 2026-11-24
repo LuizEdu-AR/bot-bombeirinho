@@ -1,3 +1,4 @@
+const { formatDateTime } = require('../utils/datetime');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const { db, admin, guildCollection } = require('./firebase');
 const { channels } = require('../config/ids');
@@ -12,8 +13,7 @@ function view(s) {
         .setTitle(`🚒 SSFD • Sugestão #${s.number}`)
         .setDescription(`**📢 PROPOSTA**\n\n**${s.text}**`)
         .addFields({ name: 'Autor', value: `<@${s.authorId}>`, inline: true }, { name: 'Participação', value: `${total} voto(s)`, inline: true })
-        .setFooter({ text: 'SSFD • Vote abaixo e participe da discussão no tópico' })
-        .setTimestamp(s.createdAt ? new Date(s.createdAt) : new Date());
+        .setFooter({ text: 'SSFD • Vote abaixo e participe da discussão no tópico' + ` • ${formatDateTime(s.createdAt ? new Date(s.createdAt) : new Date())}` });
     const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`sug:vote:${s.number}:agree`).setLabel(`Concordo ${percentage}% • ${s.agree || 0}`).setStyle(ButtonStyle.Success), new ButtonBuilder().setCustomId(`sug:vote:${s.number}:disagree`).setLabel(`Discordo ${total ? 100 - percentage : 0}% • ${s.disagree || 0}`).setStyle(ButtonStyle.Danger), new ButtonBuilder().setCustomId(`sug:count:${s.number}`).setLabel(`Total de votos: ${total}`).setStyle(ButtonStyle.Secondary).setDisabled(true));
     return { embeds: [embed], components: [row], allowedMentions: { parse: [] } };
 }

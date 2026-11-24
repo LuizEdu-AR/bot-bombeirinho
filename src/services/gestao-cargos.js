@@ -1,3 +1,4 @@
+const { formatDateTime } = require('../utils/datetime');
 const { administrativePanel } = require('./panel-components-v2');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, UserSelectMenuBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
 const { roles, courses, channels } = require('../config/ids');
@@ -191,7 +192,7 @@ async function handleGestao(interaction) {
         const channel = await interaction.guild.channels.fetch(ANNOUNCEMENTS_CHANNEL).catch(() => null);
         if (!channel || !channel.isTextBased() || typeof channel.send !== 'function')
             return interaction.editReply({ content: 'Canal de anúncios não encontrado ou inacessível. Nenhum agendamento foi publicado.', components: [] });
-        const embed = new EmbedBuilder().setColor(0xd92929).setTitle('🚒 SSFD | Cursos Internos — Agendamento').setDescription('Uma nova atividade de capacitação foi programada para os integrantes do **South State Fire Department**.').addFields({ name: '📚 Curso(s)', value: d.courses.map(k => `• ${scheduleCourseNames[k]}`).join('\n'), inline: false }, { name: '📅 Datas e horários', value: sessionText(d.sessions), inline: false }, { name: '📍 Local de início', value: d.location, inline: false }, { name: '👨‍🚒 Instrutor responsável', value: `<@${d.instructorId}>`, inline: false }).setFooter({ text: 'SSFD • Cursos Internos' }).setTimestamp();
+        const embed = new EmbedBuilder().setColor(0xd92929).setTitle('🚒 SSFD | Cursos Internos — Agendamento').setDescription('Uma nova atividade de capacitação foi programada para os integrantes do **South State Fire Department**.').addFields({ name: '📚 Curso(s)', value: d.courses.map(k => `• ${scheduleCourseNames[k]}`).join('\n'), inline: false }, { name: '📅 Datas e horários', value: sessionText(d.sessions), inline: false }, { name: '📍 Local de início', value: d.location, inline: false }, { name: '👨‍🚒 Instrutor responsável', value: `<@${d.instructorId}>`, inline: false }).setFooter({ text: 'SSFD • Cursos Internos' + ` • ${formatDateTime()}` });
         let msg;
         try {
             msg = await channel.send({ content: `<@&${BOMBEIROS_ROLE}>`, embeds: [embed], allowedMentions: { parse: [], roles: [BOMBEIROS_ROLE] } });
@@ -384,7 +385,7 @@ async function handleGestao(interaction) {
                     chunks.push(chunk);
                 for (const [i, part] of chunks.entries()) {
                     try {
-                        await ch.send({ embeds: [new EmbedBuilder().setColor(0xC62828).setTitle('SSFD | Certificações de Cursos').setDescription(part).addFields({ name: 'Atribuído por', value: `<@${interaction.user.id}>` }).setFooter({ text: `Certificações • ${i + 1}/${chunks.length}` }).setTimestamp()], allowedMentions: { parse: [] } });
+                        await ch.send({ embeds: [new EmbedBuilder().setColor(0xC62828).setTitle('SSFD | Certificações de Cursos').setDescription(part).addFields({ name: 'Atribuído por', value: `<@${interaction.user.id}>` }).setFooter({ text: `Certificações • ${i + 1}/${chunks.length}` + ` • ${formatDateTime()}` })], allowedMentions: { parse: [] } });
                     }
                     catch (err) {
                         console.error('[Gestão] Publicar certificados:', err);
@@ -462,8 +463,7 @@ async function handleGestao(interaction) {
                     '**Parabéns aos concluintes!** 🏅'
                 ].join('\n'))
                     .addFields({ name: 'Curso atribuído por', value: `<@${interaction.user.id}>`, inline: false })
-                    .setFooter({ text: 'South State Fire Department • Formação e excelência' })
-                    .setTimestamp();
+                    .setFooter({ text: 'South State Fire Department • Formação e excelência' + ` • ${formatDateTime()}` });
                 try {
                     await ch.send({ embeds: [embed], allowedMentions: { parse: [], users: granted } });
                 }
@@ -561,7 +561,7 @@ async function handleGestao(interaction) {
         const embed = new EmbedBuilder().setColor(0xd92929).setTitle('🚒 SSFD | Comunicado de Exoneração')
             .setDescription(`**Bombeiro exonerado:** <@${target}>\n**Responsável:** <@${interaction.user.id}>`)
             .addFields({ name: 'Motivo', value: draft.reason }, { name: 'Informações sobre retorno', value: 'Você poderá retornar ao SSFD. Permanecerá por **7 dias como Cadete** e, após esse período, poderá recuperar sua patente anterior e os cursos concluídos, conforme as regras da corporação.\n\n**Cursos concluídos:** as certificações registradas permanecem no banco de dados, mesmo após a saída do servidor, e poderão ser restauradas pela Gestão de Cargos.' }, { name: 'Dúvidas', value: `Entre em contato com <@${interaction.user.id}> ou com alguém do comando do SSFD.` })
-            .setFooter({ text: 'South State Fire Department • Exoneração' }).setTimestamp();
+            .setFooter({ text: 'South State Fire Department • Exoneração' + ` • ${formatDateTime()}` });
         let announceWarning = '';
         try {
             await ch.send({ content: `<@${target}>`, embeds: [embed], allowedMentions: { parse: [], users: [target] } });

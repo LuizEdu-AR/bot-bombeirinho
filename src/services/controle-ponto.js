@@ -1,3 +1,4 @@
+const { formatDateTime } = require('../utils/datetime');
 const { administrativePanel } = require('./panel-components-v2');
 const { administrativeLog } = require('./logs-administrativos');
 const { randomBytes } = require('node:crypto');
@@ -31,7 +32,7 @@ function cleanRankingViews() {
         rankingViews.delete(rankingViews.keys().next().value);
 }
 function rankingEmbed(view) {
-    const header = `**Início:** ${view.since ? `<t:${Math.floor(view.since / 1000)}:F>` : 'Desde o início dos registros'}\n\n`;
+    const header = `**Início:** ${view.since ? formatDateTime(view.since) : 'Desde o início dos registros'}\n\n`;
     const lines = view.totals.map((d, i) => `${i + 1}. <@${d.id}> — **${duration(d.ms)}**`);
     let description = header;
     let shown = 0;
@@ -202,7 +203,7 @@ async function handleControle(interaction) {
         const [snap, totals] = await Promise.all([ref.get(), sessionTotals(ref)]);
         const d = snap.exists ? snap.data() : null;
         const status = d ? ({ open: 'Em andamento', paused: 'Pausado', closed: 'Encerrado' }[d.status] || 'Desconhecido') : 'Sem registros';
-        const last = totals.last ? `<t:${Math.floor(totals.last / 1000)}:F>` : 'Nenhum';
+        const last = totals.last ? formatDateTime(totals.last) : 'Nenhum';
         return interaction.editReply({ content: `**🚒 SSFD • Histórico de Horas**\nBombeiro: <@${userId}>\n**Total trabalhado: ${duration(totals.total)}**\nExpedientes encerrados: **${totals.count}**\nStatus do último ponto: **${status}**\nÚltimo encerramento: ${last}\n\n_As horas totais não são afetadas pelo reset do ranking._`, components: [], allowedMentions: { parse: [] } });
     }
     if (id === 'controle:abertos') {
@@ -232,7 +233,7 @@ async function handleControle(interaction) {
     if (id === 'controle:reset') {
         const snap = await settingsRef(interaction.guildId).get();
         const since = timestampMs(snap.data()?.periodStartedAt);
-        return interaction.reply({ content: `**⚠️ Confirmar reset do ranking**\nPeríodo atual: ${since ? `<t:${Math.floor(since / 1000)}:F>` : 'Desde o início dos registros'}.\n\nEsta ação iniciará um novo período. **O histórico e as horas totais dos bombeiros serão preservados.**`, flags: MessageFlags.Ephemeral,
+        return interaction.reply({ content: `**⚠️ Confirmar reset do ranking**\nPeríodo atual: ${since ? formatDateTime(since) : 'Desde o início dos registros'}.\n\nEsta ação iniciará um novo período. **O histórico e as horas totais dos bombeiros serão preservados.**`, flags: MessageFlags.Ephemeral,
             components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('controle:reset:confirmar').setLabel('Confirmar reset').setStyle(ButtonStyle.Danger), new ButtonBuilder().setCustomId('controle:reset:cancelar').setLabel('Cancelar').setStyle(ButtonStyle.Secondary))] });
     }
     if (id === 'controle:reset:cancelar') {
@@ -248,8 +249,8 @@ async function handleControle(interaction) {
             tx.set(eventRef, { actorId: interaction.user.id, at: now, previousPeriodStartedAt: previous.data()?.periodStartedAt || null });
             tx.set(ref, { periodStartedAt: now, lastResetBy: interaction.user.id, updatedAt: now }, { merge: true });
         });
-        await administrativeLog(interaction.guildId, 'ranking_reset', { actorId: interaction.user.id, details: { 'Período anterior': String(now.toDate().toISOString()) }, key: `ranking-${eventRef.id}` });
-        return interaction.editReply({ content: `✅ Ranking reiniciado por <@${interaction.user.id}> em <t:${Math.floor(now.toMillis() / 1000)}:F>.\nAs horas históricas foram preservadas.`, components: [], allowedMentions: { parse: [] } });
+        await administrativeLog(interaction.guildId, 'ranking_reset', { actorId: interaction.user.id, details: { 'Novo período iniciado em': formatDateTime(now.toMillis()) }, key: `ranking-${eventRef.id}` });
+        return interaction.editReply({ content: `✅ Ranking reiniciado por <@${interaction.user.id}> em ${formatDateTime(now.toMillis())}.\nAs horas históricas foram preservadas.`, components: [], allowedMentions: { parse: [] } });
     }
 }
 module.exports = { panel, handleControle };

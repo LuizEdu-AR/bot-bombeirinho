@@ -1,3 +1,4 @@
+const { formatDateTime } = require('../utils/datetime');
 const { EmbedBuilder } = require('discord.js');
 const { db, admin, guildCollection } = require('./firebase');
 const CHANNEL_ID = '1560709138567139388';
@@ -69,7 +70,7 @@ async function administrativeLog(guildId, type, { actorId = null, targetId = nul
         const embed = new EmbedBuilder().setColor(type === 'dismissed' || type === 'registration_rejected' ? 0xc62828 : type === 'inspection_completed' || type === 'courses_restored' ? 0x27875a : 0x247a9e)
             .setTitle(`🚒 SSFD | ${names[type] || 'Ação administrativa'}`)
             .addFields({ name: 'Responsável', value: actorId ? `<@${actorId}>` : 'Sistema automático', inline: true }, ...(targetId ? [{ name: 'Membro', value: `<@${targetId}>`, inline: true }] : []))
-            .setFooter({ text: 'Bombeirinho • Registro administrativo' }).setTimestamp();
+            .setFooter({ text: 'Bombeirinho • Registro administrativo' + ` • ${formatDateTime()}` });
         embed.setDescription(formatted(type, details, guild).slice(0, 4000));
         await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
     }

@@ -1,3 +1,4 @@
+process.env.TZ = 'America/Sao_Paulo';
 require('dotenv').config();
 const { Client, GatewayIntentBits, Events, MessageFlags } = require('discord.js');
 const { channels } = require('./config/ids');

@@ -1,3 +1,4 @@
+const { withBrasiliaTimestamp } = require('../utils/datetime');
 const { administrativeLog } = require('./logs-administrativos');
 const { db, admin, guildCollection } = require('./firebase');
 const { registrationTypes } = require('../config/registration');
@@ -17,8 +18,8 @@ async function updateReviewCard(message, status, reviewerId, reason) {
     const original = message.embeds?.[0];
     const embed = original ? EmbedBuilder.from(original) : new EmbedBuilder();
     embed.setColor(approved ? 0x22c55e : 0xef4444)
-        .setTitle(approved ? 'Cadastro autorizado' : 'Cadastro recusado')
-        .setTimestamp(new Date());
+        .setTitle(approved ? 'Cadastro autorizado' : 'Cadastro recusado');
+    withBrasiliaTimestamp(embed);
     // Evita duplicar campos se uma operação for repetida após falha de rede.
     const previous = (embed.data.fields || []).filter(f => !['Autorizado por', 'Recusado por', 'Motivo da recusa'].includes(f.name));
     embed.setFields(previous);

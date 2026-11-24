@@ -1,4 +1,5 @@
 'use strict';
+const { addCalendarDays, formatDate, formatLongDate, inspectionDate } = require('../utils/datetime');
 const { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags, ModalBuilder, StringSelectMenuBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { randomUUID } = require('node:crypto');
 const path = require('node:path');
@@ -132,10 +133,9 @@ async function renderPNG(data) {
     const sharp = require('sharp');
     const w = 1024, h = 1449;
     const date = new Date(data.inspectedAt);
-    const due = new Date(date);
-    due.setUTCDate(due.getUTCDate() + 15);
-    const displayDate = value => new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' }).format(value);
-    const longDate = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+    const due = addCalendarDays(date, 15);
+    const displayDate = formatDate;
+    const longDate = formatLongDate(date);
     const inspector = stripRpPrefix(data.inspectorName);
     const intro = `O Corpo de Bombeiros vem por meio desse atestado, afirmar que o estabelecimento ${data.placeName} segue as seguintes conformidades:`;
     const introduction = block(intro, 27, 365, { size: 23, width: 965, height: 29 });
@@ -352,7 +352,7 @@ async function handleAtestados(i) {
             ownerId: clean(place.ownerId || 'Não cadastrado', 30),
             ownerPhone: clean(place.ownerPhone || 'Não cadastrado', 30),
             observations: clean(i.fields.getTextInputValue('observations'), 350),
-            inspectedAt: new Date().toISOString().slice(0, 10) + 'T12:00:00.000Z',
+            inspectedAt: inspectionDate(),
             ...inspector,
             authorId: i.user.id,
             createdAtMs: Date.now()

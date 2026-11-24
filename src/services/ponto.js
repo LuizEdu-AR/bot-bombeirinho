@@ -1,3 +1,4 @@
+const { formatDateTime } = require('../utils/datetime');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 const { db, admin, guildCollection } = require('./firebase');
 const { channels, roles } = require('../config/ids');
@@ -23,7 +24,7 @@ function components(d, userId) {
 }
 // Os horários de pausas e retornos são mantidos na sessão e no documento ativo.
 // Registros anteriores à atualização continuam compatíveis (histórico vazio).
-const discordDate = ms => ms ? `<t:${Math.floor(ms / 1000)}:F>` : 'Não registrado';
+const discordDate = ms => ms ? formatDateTime(ms) : 'Não registrado';
 const historyEntries = d => Array.isArray(d.pauseHistory) ? d.pauseHistory : [];
 function pauseHistoryText(d) {
     const entries = historyEntries(d);
@@ -68,7 +69,7 @@ function display(d, userId) {
     }
     if (d.fivemReviewPending)
         embed.addFields({ name: 'Revisão pendente', value: `Nova entrada no FiveM durante o expediente. ${d.fivemReentries?.length || 0} reconexão(ões) detectada(s). O tempo de desconexão não foi presumido.`, inline: false });
-    embed.setFooter({ text: 'Bombeirinho • South State Fire Department' }).setTimestamp(t);
+    embed.setFooter({ text: 'Bombeirinho • South State Fire Department' + ` • ${formatDateTime(t)}` });
     return { content: `<@${userId}>`, embeds: [embed], components: components(d, userId), allowedMentions: { users: [userId] } };
 }
 const fmtDetailed = ms => {
@@ -94,7 +95,7 @@ async function log(guild, userId, label, d, actorId) {
             ? `O bombeiro <@${userId}> **abriu seu ponto de serviço**.`
             : `O bombeiro <@${userId}> **encerrou seu ponto de serviço**, totalizando **${fmtDetailed(workedMs)}** de trabalho.`;
         const payload = {
-            embeds: [new EmbedBuilder().setColor(isOpen ? 0x239e60 : 0xd92929).setDescription(text).setTimestamp()],
+            embeds: [new EmbedBuilder().setColor(isOpen ? 0x239e60 : 0xd92929).setDescription(text).setFooter({ text: formatDateTime() })],
             allowedMentions: { parse: [] }
         };
         if (messageUrl)
@@ -131,8 +132,7 @@ function alertDmPayload(guildId, userId, d) {
         '',
         `[**Acessar meu ponto no Discord**](${pointUrl})`
     ].join('\n'))
-        .setFooter({ text: 'Bombeirinho • South State Fire Department' })
-        .setTimestamp();
+        .setFooter({ text: 'Bombeirinho • South State Fire Department' + ` • ${formatDateTime()}` });
     return { embeds: [embed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Acessar meu ponto').setURL(pointUrl))] };
 }
 async function handlePonto(interaction) {

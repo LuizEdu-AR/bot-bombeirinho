@@ -1,3 +1,4 @@
+const { formatDateTime } = require('../utils/datetime');
 const {
     ActionRowBuilder,
     ButtonStyle,
@@ -158,8 +159,7 @@ function logEmbed(record) {
             { name: 'Item', value: record.item, inline: true },
             { name: 'Quantidade', value: `${record.quantity} unidade(s)`, inline: true }
         )
-        .setFooter({ text: 'Bombeirinho • Histórico de movimentações do baú' })
-        .setTimestamp(new Date(record.createdAt));
+        .setFooter({ text: 'Bombeirinho • Histórico de movimentações do baú' + ` • ${formatDateTime(new Date(record.createdAt))}` });
 
     if (!isAddition) {
         embed.addFields({ name: 'Motivo da remoção', value: record.reason, inline: false });
